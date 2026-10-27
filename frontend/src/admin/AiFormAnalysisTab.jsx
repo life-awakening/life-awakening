@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import lottie from 'lottie-web'
 import html2pdf from 'html2pdf.js'
+import API_BASE_URL from '@/config/apiConfig';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer,
   PieChart, Pie
@@ -12,7 +13,7 @@ import {
   Brain, Compass, Target, Clock, ArrowRight, UserCheck
 } from 'lucide-react'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API = API_BASE_URL;
 
 const ANALYSIS_OPTIONS = [
   { id: 'Service-Trainers', label: 'Service Trainee Feedback', desc: 'Feedback from trainees on service, hospitality & trainers' },

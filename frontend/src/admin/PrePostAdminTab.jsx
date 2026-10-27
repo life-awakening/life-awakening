@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, ShieldCheck, Check, UserCheck, AlertCircle } from 'lucide-react';
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function PrePostAdminTab({ API, token, user, showToast }) {
   const [members, setMembers] = useState([]);
@@ -9,7 +10,7 @@ export default function PrePostAdminTab({ API, token, user, showToast }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [savingUserId, setSavingUserId] = useState(null);
 
-  const effectiveApi = API || import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const effectiveApi = API || API_BASE_URL;
   const authToken = token || localStorage.getItem('token');
 
   const fetchMembers = useCallback(async (isSilent = false) => {

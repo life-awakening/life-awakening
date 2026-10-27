@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   Briefcase,
   CheckCircle2,
@@ -127,7 +128,7 @@ const CATEGORIES = [
   }
 ];
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiThingsToCarryTab({ isMobile = false, studentId = null, token = null }) {
   const effectiveStudentId = studentId || (() => {

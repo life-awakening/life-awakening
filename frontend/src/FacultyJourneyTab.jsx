@@ -6,6 +6,7 @@ import {
   Camera, UploadCloud, Clock
 } from 'lucide-react'
 import { useLanguage } from './context/LanguageContext'
+import API_BASE_URL from '@/config/apiConfig';
 
 const SQUAD_OPTIONS = ['All Squads', 'Aditya', 'Bhaskar', 'Dinkar', 'Divakar', 'Mitra', 'Martand', 'Prabhakar', 'Ravi', 'Surya', 'Tejonidhi']
 
@@ -281,17 +282,17 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
     if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+    const apiUrl = API_BASE_URL;
     return `${apiUrl}${url.startsWith('/') ? '' : '/'}${url}`
   }, [])
 
   const fetchMedia = useCallback(() => {
     setLoading(true)
-    let endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/journey-media`
+    let endpoint = `${API_BASE_URL}/api/faculty/journey-media`
     if (isAdmin || isSuperAdmin || isReadOnly || isGalleryUser) {
-      endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/journey-media`
+      endpoint = `${API_BASE_URL}/api/admin/journey-media`
     } else if (isStudent) {
-      endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/journey-media?limit=200`
+      endpoint = `${API_BASE_URL}/api/student/journey-media?limit=200`
     }
 
     const headers = { Authorization: `Bearer ${token}` }
@@ -364,7 +365,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       setBatchList(batches)
       if (!groupBatchId) setGroupBatchId(String(batches[0].id))
     } else if (isSuperOrAdmin || isGalleryUser) {
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/batches`, {
+      fetch(`${API_BASE_URL}/api/superadmin/batches`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(r => r.json())
@@ -397,7 +398,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
   const fetchBatchGroupPhotos = useCallback((batchId) => {
     if (!batchId || batchId === 'undefined' || batchId === 'null' || !token) return
     setLoadingGroupPhotos(true)
-    const endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/batch-group-photos/${batchId}`
+    const endpoint = `${API_BASE_URL}/api/superadmin/batch-group-photos/${batchId}`
     fetch(endpoint, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -413,7 +414,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
   const fetchBatchComplianceSummary = useCallback(() => {
     if (!canManageGroupPhotos || !token) return
     setLoadingCompliance(true)
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/batch-group-photos/summary`, {
+    fetch(`${API_BASE_URL}/api/superadmin/batch-group-photos/summary`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
@@ -529,7 +530,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       [slot]: { progress: 0, speed: '', eta: t('Initializing session...'), status: 'uploading' }
     }))
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+    const apiUrl = API_BASE_URL;
     const fileName = staged?.name || fileToUpload.name || `group_photo_slot_${slot}.jpg`
     const mimeType = fileToUpload.type || 'image/jpeg'
     const fileSize = fileToUpload.size
@@ -789,7 +790,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
   const handleDeleteGroupPhoto = async (photoId) => {
     if (!window.confirm(t('Are you sure you want to delete this Official Batch Group Photo?'))) return
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/batch-group-photos/${photoId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/batch-group-photos/${photoId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -1242,8 +1243,8 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       setIsSelectionMode(false)
 
       const endpointPrefix = isAdmin
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/journey-media/`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/journey-media/`
+        ? `${API_BASE_URL}/api/admin/journey-media/`
+        : `${API_BASE_URL}/api/faculty/journey-media/`
 
       let deletedCount = 0
       for (const id of selectedList) {
@@ -1442,7 +1443,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
 
   const performBinaryFallbackUpload = async (item) => {
     const file = item.file
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+    const apiUrl = API_BASE_URL;
 
     return new Promise((resolve, reject) => {
       const formData = new FormData()
@@ -1518,7 +1519,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
 
   const uploadSingleFile = async (item) => {
     const file = item.file
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+    const apiUrl = API_BASE_URL;
 
     const presignedRes = await fetch(`${apiUrl}/api/faculty/journey-media/presigned-url`, {
       method: 'POST',
@@ -1761,8 +1762,8 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       }
 
       const endpointPrefix = isAdmin
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/journey-media/`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/journey-media/`
+        ? `${API_BASE_URL}/api/admin/journey-media/`
+        : `${API_BASE_URL}/api/faculty/journey-media/`
 
       try {
         const res = await fetch(`${endpointPrefix}${mediaId}`, {

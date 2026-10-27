@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useLanguage } from './context/LanguageContext';
 import PasswordOtpModal from './PasswordOtpModal';
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function ResetPasswordGate({ onSuccess }) {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ export default function ResetPasswordGate({ onSuccess }) {
     setGatePassLoading(true);
     setGatePassMsg({ type: '', text: '' });
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiBase = API_BASE_URL;
       const res = await fetch(`${apiBase}/api/student/request-password-otp`, {
         method: 'POST',
         headers: {
@@ -86,7 +87,7 @@ export default function ResetPasswordGate({ onSuccess }) {
 
   const handleGateVerifyOtp = async (otpCode) => {
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiBase = API_BASE_URL;
       const res = await fetch(`${apiBase}/api/student/verify-password-otp`, {
         method: 'POST',
         headers: {
@@ -130,7 +131,7 @@ export default function ResetPasswordGate({ onSuccess }) {
 
   const handleGateResendOtp = async () => {
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiBase = API_BASE_URL;
       const res = await fetch(`${apiBase}/api/student/resend-password-otp`, {
         method: 'POST',
         headers: {

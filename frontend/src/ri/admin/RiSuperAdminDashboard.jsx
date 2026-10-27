@@ -36,8 +36,9 @@ import {
   CartesianGrid
 } from 'recharts';
 import * as XLSX from 'xlsx';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 // Professional RI Theme Palette (Clean MIT-WPU Admin Design Language)
 const THEME = {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import { 
   TrendingUp, BarChart2, Users, BookOpen, FileText, AlertTriangle, 
   CheckCircle, RefreshCw, Download, Trash2, Plus, Search, Filter, 
@@ -9,7 +10,7 @@ import {
 export default function TrendsAnalyticsModule({ token, showToast, batches, users }) {
   const [activeSubTab, setActiveSubTab] = useState('attendance');
 
-  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+  const apiBase = API_BASE_URL;
 
   const apiFetch = useCallback(async (endpoint, options = {}) => {
     const headers = {

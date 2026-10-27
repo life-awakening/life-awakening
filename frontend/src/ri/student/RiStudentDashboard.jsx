@@ -61,8 +61,9 @@ import RiOnboarding from './RiOnboarding';
 import RiPanelMediaViewer from '../shared/RiPanelMediaViewer';
 import { cleanPanelName, RI_ACTIVITIES, RI_ACTIVITIES_LIST } from '../shared/riUtils';
 import { RI_DOS_DONTS_CATEGORIES } from '../shared/riDosDontsData';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 // Instagram Brand Icon
 const InstagramIcon = ({ size = 16, color = "currentColor", style = {} }) => (

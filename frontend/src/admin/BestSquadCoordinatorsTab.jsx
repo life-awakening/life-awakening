@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { generateBestSquadCoordinatorsPdf } from '../utils/generateBestSquadCoordinatorsPdf';
+import API_BASE_URL from '@/config/apiConfig';
 
 const CANONICAL_SQUADS = [
   'Aditya',
@@ -22,7 +23,7 @@ export default function BestSquadCoordinatorsTab({
   isReadonly = false,
   isMobile: isMobileProp
 }) {
-  const effectiveApi = apiBase || API || import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const effectiveApi = apiBase || API || API_BASE_URL;
   const authToken = token || localStorage.getItem('token');
 
   const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);

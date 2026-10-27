@@ -27,8 +27,9 @@ import {
 import SecureImage from '../shared/SecureImage';
 import SecureVideo from '../shared/SecureVideo';
 import { downloadSecureFile, openSecureFile } from '../utils/secureFileHelpers';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 // Helper to format file size
 const formatFileSize = (bytes) => {

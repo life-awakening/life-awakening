@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   Trophy,
   Calendar,
@@ -112,7 +113,7 @@ export default function PerformanceAdminDashboard() {
     }
   }, []);
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API = API_BASE_URL;
 
   // Responsive state
   const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));

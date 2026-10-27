@@ -21,8 +21,9 @@ import {
 } from 'lucide-react';
 import { cleanPanelName, formatRiDate } from '../shared/riUtils';
 import RiStudentWorkspaceModal from './RiStudentWorkspaceModal';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 const RATING_OPTIONS = [
   { value: 'Excellent', label: 'Excellent', score10: 10, score15: 15, score30: 30 },

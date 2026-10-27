@@ -3,8 +3,9 @@ import { Plus, Users, GraduationCap, MapPin, Calendar, ChevronRight, Edit2, Tras
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { formatStudentEmail } from './utils/studentEmailHelper'
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API = API_BASE_URL;
 const SQUAD_NAMES = ['Aditya', 'Bhaskar', 'Dinkar', 'Divakar', 'Mitra', 'Martand', 'Prabhakar', 'Ravi', 'Surya', 'Tejonidhi']
 const SQUAD_COLORS = {
   Surya:     '#ea580c', // Orange

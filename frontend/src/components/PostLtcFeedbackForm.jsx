@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   CheckCircle,
   AlertCircle,
@@ -70,7 +71,7 @@ const ConfettiPopper = ({ trigger }) => {
 
 export default function PostLtcFeedbackForm({ token, role = 'student', myData, onFeedbackSubmitted }) {
   const { t } = useLanguage();
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API = API_BASE_URL;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

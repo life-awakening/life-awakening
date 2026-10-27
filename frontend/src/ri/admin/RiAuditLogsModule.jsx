@@ -5,8 +5,9 @@ import {
   Clock, Info, Layers, Building, AlertCircle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiAuditLogsModule({ isMobile = false }) {
   const token = localStorage.getItem('token');

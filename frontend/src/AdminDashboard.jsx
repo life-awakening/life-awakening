@@ -37,8 +37,9 @@ import FacultyJourneyTab from './FacultyJourneyTab'
 import WhatsappCampaignModule from './admin/WhatsappCampaignModule'
 import { parseFeedbackForDisplay } from './utils/feedbackQuestions'
 import { generateFailedEmailsPdf } from './utils/generateFailedEmailsPdf'
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API = API_BASE_URL;
 const SQUAD_NAMES = ['Aditya', 'Bhaskar', 'Dinkar', 'Divakar', 'Mitra', 'Martand', 'Prabhakar', 'Ravi', 'Surya', 'Tejonidhi']
 
 // ─── Utility hooks ────────────────────────────────────────────────────────────
@@ -3439,7 +3440,7 @@ MIT World Peace University, Pune`,
 
   const handleDownloadStudentFeedbackPdf = async (studentId, category) => {
     try {
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/feedback/pdf/${studentId}/${category}`;
+      const url = `${API_BASE_URL}/api/student/feedback/pdf/${studentId}/${category}`;
       const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { parseFeedbackForDisplay, formatFeedbackForExcel, exportSubmissionsFeedbackExcel } from '../utils/feedbackQuestions';
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function PrePostLtcSuperAdminPanel({ API: propApi, token: propToken, user: propUser, showToast: propShowToast } = {}) {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function PrePostLtcSuperAdminPanel({ API: propApi, token: propTok
     }
   }, [propUser]);
 
-  const API = propApi || import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API = propApi || API_BASE_URL;
 
   const [batches, setBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState('');

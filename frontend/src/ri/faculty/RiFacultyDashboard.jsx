@@ -59,8 +59,9 @@ import RiFacultyOrangeFlagTab from './RiFacultyOrangeFlagTab';
 import RiVillageTab from '../student/RiVillageTab';
 import RiFacultyUploadsTab from './RiFacultyUploadsTab';
 import RiFacultySettingsTab from './RiFacultySettingsTab';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiFacultyDashboard() {
   const navigate = useNavigate();

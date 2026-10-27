@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   CheckCircle2,
   Circle,
@@ -15,7 +16,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 const CHECKLIST_ITEMS = [
   { key: 'parents_informed', label: '1. Parents / Guardians duly informed regarding rural immersion dates, itinerary & stay', category: 'Consent & Medical' },

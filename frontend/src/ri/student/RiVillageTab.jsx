@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   MapPin,
   ExternalLink,
@@ -18,7 +19,7 @@ import {
   Compass
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 const NATIONAL_EMERGENCY_CONTACTS = [
   { name: 'National Emergency', number: '112', desc: 'Police, Fire & Medical 24/7', icon: ShieldAlert, color: '#dc2626', bg: '#fef2f2', border: '#fecaca', btnBg: '#dc2626' },

@@ -28,8 +28,9 @@ import {
   COMMITTEE_REMARKS_OPTIONS
 } from '../shared/riProblemIdentificationSchema';
 import { downloadProblemIdentificationPdf } from '../utils/riFormHardCopyPdf';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = API_BASE_URL;
 
 export default function RiProblemIdentificationForm({
   data,

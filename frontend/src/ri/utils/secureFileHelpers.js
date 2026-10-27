@@ -1,3 +1,4 @@
+import API_BASE_URL from '@/config/apiConfig';
 /**
  * Secure File Helpers for RI Hybrid S3 Storage
  * 
@@ -7,7 +8,7 @@
  * - New tab & direct downloads use single-use, object-bound, short-lived file access tickets
  */
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/+$/, '');
+const API = API_BASE_URL;
 
 export const getAuthToken = () => {
   if (typeof window === 'undefined') return '';

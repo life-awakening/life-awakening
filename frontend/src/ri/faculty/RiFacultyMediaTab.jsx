@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   Camera,
   Upload,
@@ -19,7 +20,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 // Helper to format file size
 const formatFileSize = (bytes) => {

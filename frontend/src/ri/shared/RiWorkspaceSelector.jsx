@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   Briefcase,
   UserCheck,
@@ -12,7 +13,7 @@ import {
   Building2
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 function normalizeAssignmentType(assignment) {
   if (!assignment) return null;

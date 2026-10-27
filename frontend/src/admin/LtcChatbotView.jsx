@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API = API_BASE_URL;
 
 const SUGGESTED_QUESTIONS = [
   'How many batches are active?',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Clock, MapPin, Calendar, Sparkles, Shirt, Timer, CheckCircle, Info } from 'lucide-react'
 import { useLanguage } from './context/LanguageContext'
+import API_BASE_URL from '@/config/apiConfig';
 
 export function calculateLrpDay(startDateStr, currentDateObj = new Date()) {
   if (!startDateStr) return 1;
@@ -50,7 +51,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           return
         }
         const clientDateStr = new Date().toISOString();
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/active-batch?clientDate=${encodeURIComponent(clientDateStr)}`, {
+        const res = await fetch(`${API_BASE_URL}/api/active-batch?clientDate=${encodeURIComponent(clientDateStr)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (res.ok) {

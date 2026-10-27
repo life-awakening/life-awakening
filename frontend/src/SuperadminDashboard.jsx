@@ -83,6 +83,7 @@ function Modal({ open, onClose, title, children, size = '', hideHeader = false }
 }
 
 import TicketsModule from './admin/TicketsModule'
+import API_BASE_URL from '@/config/apiConfig';
 
 // ─── Superadmin Ticket Management Component ───────────────────────────────────
 function SuperadminTicketsTab({ token, apiBase, API, isReadonly }) {
@@ -130,7 +131,7 @@ export default function SuperadminDashboard() {
 
   const [isResetFlowModalOpen, setIsResetFlowModalOpen] = useState(false)
 
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+  const apiBase = API_BASE_URL;
   const isReadonly = user?.role === 'superadmin_readonly'
 
   // Change Password state & handlers

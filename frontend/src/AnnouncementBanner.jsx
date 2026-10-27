@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Bell, X } from 'lucide-react'
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function AnnouncementBanner() {
   const [announcement, setAnnouncement] = useState('')
@@ -15,7 +16,7 @@ export default function AnnouncementBanner() {
       return
     }
 
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+    const apiBase = API_BASE_URL;
     fetch(`${apiBase}/api/announcement`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })

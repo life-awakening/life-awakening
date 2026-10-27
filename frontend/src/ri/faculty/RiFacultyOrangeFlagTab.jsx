@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   Flag,
   Search,
@@ -25,7 +26,7 @@ import {
   Trash2
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 // Robust URL resolver (routes uploaded assets through /api/uploads for CloudFront compatibility)
 const resolveFileUrl = (url) => {

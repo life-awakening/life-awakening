@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { REQUIRE_STUDENT_PASSWORD_CHANGE } from './config/authConfig';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function PortalSelector() {
   const navigate = useNavigate();

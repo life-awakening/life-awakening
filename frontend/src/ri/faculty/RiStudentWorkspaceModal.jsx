@@ -40,8 +40,9 @@ import RiFamilySurveyView from '../shared/RiFamilySurveyView';
 import RiInstitutionView from '../shared/RiInstitutionView';
 import SecureImage from '../shared/SecureImage';
 import { resolveCleanFileUrl, openSecureFile, downloadSecureFile } from '../utils/secureFileHelpers';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 // Robust file URL resolution ensuring correct API domain and static access without token leaks
 const resolveFileUrl = (url) => resolveCleanFileUrl(url);

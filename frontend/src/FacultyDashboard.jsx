@@ -15,6 +15,7 @@ import ConfettiPopper from './ConfettiPopper'
 import PerformanceAdminMarkingTab from './PerformanceAdminMarkingTab'
 import PreLtcFeedbackForm from './components/PreLtcFeedbackForm'
 import PostLtcFeedbackForm from './components/PostLtcFeedbackForm'
+import API_BASE_URL from '@/config/apiConfig';
 
 const SQUAD_COLORS = {
   Surya:     '#0C54A4',
@@ -61,7 +62,7 @@ function FacultyProfileTab({ token, isLtcMember }) {
   const [otpExpiresAt, setOtpExpiresAt] = useState('')
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/profile`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE_URL}/api/faculty/profile`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { if (d.profile) setProfile(d.profile); setLoading(false) })
       .catch(() => setLoading(false))
@@ -83,7 +84,7 @@ function FacultyProfileTab({ token, isLtcMember }) {
     }
     setPassLoading(true); setPassMsg({ type: '', text: '' })
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/request-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/request-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ currentPassword: passForm.currentPassword, newPassword: passForm.newPassword })
@@ -103,7 +104,7 @@ function FacultyProfileTab({ token, isLtcMember }) {
 
   const handleVerifyOtp = async (otpCode) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/verify-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/verify-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ otp: otpCode })
@@ -124,7 +125,7 @@ function FacultyProfileTab({ token, isLtcMember }) {
 
   const handleResendOtp = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/resend-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/resend-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
       })
@@ -967,7 +968,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
     localStorage.setItem('readDocumentIds', JSON.stringify(allIds))
 
     try {
-      await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/read`, {
+      await apiFetch(`${API_BASE_URL}/api/superadmin/notifications/read`, {
         method: 'POST'
       });
       setDbUnreadCount(0);
@@ -1058,7 +1059,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                         style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }} 
                         onClick={async () => {
                           try {
-                            await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/read`, {
+                            await apiFetch(`${API_BASE_URL}/api/superadmin/notifications/read`, {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json'
@@ -1174,7 +1175,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
     }
     setGatePassLoading(true); setGatePassMsg({ type: '', text: '' });
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/request-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/request-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ currentPassword: gatePassForm.currentPassword, newPassword: gatePassForm.newPassword })
@@ -1188,7 +1189,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
   const handleGateVerifyOtp = async (otpCode) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/verify-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/verify-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ otp: otpCode })
@@ -1207,7 +1208,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
   const handleGateResendOtp = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/resend-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/resend-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
       })
@@ -1227,7 +1228,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
     e.preventDefault()
     if (!feedbackText.trim()) return alert('Please enter feedback.')
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/feedback`, {
+      const res = await fetch(`${API_BASE_URL}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -1257,7 +1258,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
     // Lightweight notification badge polling only (30 seconds)
     const interval = setInterval(async () => {
       try {
-        const notifRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/me`)
+        const notifRes = await apiFetch(`${API_BASE_URL}/api/superadmin/notifications/me`)
         if (notifRes && notifRes.ok) {
           const notifData = await notifRes.json()
           setDbNotifications((notifData.notifications || []).slice(0, 6))
@@ -1274,7 +1275,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   useEffect(() => {
     const onFocus = async () => {
       try {
-        const notifRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/me`)
+        const notifRes = await apiFetch(`${API_BASE_URL}/api/superadmin/notifications/me`)
         if (notifRes && notifRes.ok) {
           const notifData = await notifRes.json()
           setDbNotifications((notifData.notifications || []).slice(0, 6))
@@ -1349,7 +1350,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   const fetchDashboardData = async () => {
     try {
       // Fetch assigned students
-      const res = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/dashboard`)
+      const res = await apiFetch(`${API_BASE_URL}/api/faculty/dashboard`)
       if (!res) return
       if (res.ok) {
         const data = await res.json()
@@ -1363,25 +1364,25 @@ export default function FacultyDashboard({ isLtcMember = false }) {
       }
 
       // Fetch Schedules
-      const schedRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/schedules`)
+      const schedRes = await apiFetch(`${API_BASE_URL}/api/schedules`)
       if (!schedRes) return
       const schedData = await schedRes.json()
       if (schedRes.ok) setSchedules(schedData.schedules || [])
 
       // Fetch docs
-      const docRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents`)
+      const docRes = await apiFetch(`${API_BASE_URL}/api/documents`)
       if (!docRes) return
       const docData = await docRes.json()
       if (docRes.ok) setDocuments(docData.documents || [])
 
       // Fetch attendance
-      const attRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/attendance_records`)
+      const attRes = await apiFetch(`${API_BASE_URL}/api/faculty/attendance_records`)
       if (!attRes) return
       const attData = await attRes.json()
       if (attRes.ok) setAttendanceRecords(attData.records || [])
 
       // Fetch evaluations
-      const evalRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/evaluations`)
+      const evalRes = await apiFetch(`${API_BASE_URL}/api/faculty/evaluations`)
       if (!evalRes) return
       const evalData = await evalRes.json()
       if (evalRes.ok) {
@@ -1390,14 +1391,14 @@ export default function FacultyDashboard({ isLtcMember = false }) {
       }
 
       // Fetch dashboard stats
-      const statsRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/dashboard-stats`)
+      const statsRes = await apiFetch(`${API_BASE_URL}/api/dashboard-stats`)
       if (statsRes && statsRes.ok) {
         const statsData = await statsRes.json()
         setDashboardStats(statsData)
       }
 
       // Fetch user notifications
-      const notifRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/me`)
+      const notifRes = await apiFetch(`${API_BASE_URL}/api/superadmin/notifications/me`)
       if (notifRes && notifRes.ok) {
         const notifData = await notifRes.json()
         setDbNotifications((notifData.notifications || []).slice(0, 6))
@@ -1405,7 +1406,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
       }
 
       // Fetch custom certificates
-      const certsRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/certificates/my-certificates`)
+      const certsRes = await apiFetch(`${API_BASE_URL}/api/certificates/my-certificates`)
       if (certsRes && certsRes.ok) {
         const certsData = await certsRes.json()
         setCustomCertificates(certsData.certificates || [])
@@ -1413,7 +1414,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
       // Fetch Performance Admin roles
       try {
-        const perfRoleRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/performance-admin/my-roles`)
+        const perfRoleRes = await apiFetch(`${API_BASE_URL}/api/faculty/performance-admin/my-roles`)
         if (perfRoleRes && perfRoleRes.ok) {
           const perfRoleData = await perfRoleRes.json()
           setAssignedPerformanceRoles(perfRoleData.roles || [])
@@ -1578,7 +1579,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   // Primary Actions
   const handleAssignPanel = async (student_id, panel) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/assign-panel`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/assign-panel`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ student_id, panel })
@@ -1593,7 +1594,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   const handleAssignSquadLeader = async (studentId) => {
     if (!studentId) return alert('Please select a student.');
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/squad-leader`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/squad-leader`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ studentId })
@@ -1614,7 +1615,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   const handleUpdateSquadDesignation = async (studentId, squad_designation) => {
     if (!studentId) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/squad-designation`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/squad-designation`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ studentId, squad_designation })
@@ -1648,7 +1649,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   const handleCreateSchedule = async (e) => {
     e.preventDefault()
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/schedule`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(scheduleForm)
@@ -1682,7 +1683,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
           title = `LTC - Day ${i - 2}`;
         }
 
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/schedule`, {
+        await fetch(`${API_BASE_URL}/api/faculty/schedule`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({
@@ -1733,7 +1734,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
     try {
       setDnrSubmittingId(student.id);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/students/${student.id}/dnr`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/students/${student.id}/dnr`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1835,7 +1836,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
               a.pillar === selectedAttPillar && 
               Number(a.day) === Number(selectedAttDay)
             )?.status;
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/attendance`, {
+        const res = await fetch(`${API_BASE_URL}/api/faculty/attendance`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ 
@@ -1929,10 +1930,10 @@ export default function FacultyDashboard({ isLtcMember = false }) {
       let url = '';
       let filename = '';
       if (type === 'undertaking') {
-        url = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/undertaking/pdf/${studentId}`;
+        url = `${API_BASE_URL}/api/student/undertaking/pdf/${studentId}`;
         filename = `Undertaking_Student_${studentId}.pdf`;
       } else {
-        url = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/feedback/pdf/${studentId}/${type}`;
+        url = `${API_BASE_URL}/api/student/feedback/pdf/${studentId}/${type}`;
         filename = `${type}_Feedback_Student_${studentId}.pdf`;
       }
 
@@ -1981,7 +1982,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
     if (!redFlagForm.reason.trim()) return alert('Please describe the incident before submitting.')
     setRedFlagSubmitting(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/add-red-flag`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/add-red-flag`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ student_id: redFlagModal.studentId, category: redFlagForm.category, reason: redFlagForm.reason })
@@ -2367,7 +2368,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
         })
       };
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/evaluate`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload)
@@ -2375,7 +2376,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
       if (res.ok) {
         // Refresh evaluations
-        const refRes = await apiFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/evaluations`);
+        const refRes = await apiFetch(`${API_BASE_URL}/api/faculty/evaluations`);
         if (refRes && refRes.ok) {
           const data = await refRes.json();
           setAllEvaluations(data.evaluations || []);
@@ -2479,7 +2480,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
     setSubmittingUndertaking(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/faculty/submit-undertaking`, {
+      const res = await fetch(`${API_BASE_URL}/api/faculty/submit-undertaking`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(undertakingForm)
@@ -4071,7 +4072,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                       </div>
                       <button
                         onClick={() => {
-                          const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+                          const API = API_BASE_URL;
                           const link = document.createElement('a');
                           const rawUrl = c.data?.url;
                           const finalToken = (typeof token !== 'undefined' ? token : '') || localStorage.getItem('token') || '';
@@ -5686,13 +5687,13 @@ export default function FacultyDashboard({ isLtcMember = false }) {
 
         {activeTab === 'pre-ltc-feedback' && <FacultyPreLtcFeedbackTab token={token} />}
 
-        {activeTab === 'tickets' && <FacultyTicketsTab token={token} API={import.meta.env.VITE_API_URL || 'http://localhost:5001'} />}
+        {activeTab === 'tickets' && <FacultyTicketsTab token={token} API={API_BASE_URL} />}
 
         {activeTab === 'certificates' && <UserCertificatesTab token={token} />}
         
         {activeTab === 'performance-admin' && (
           <PerformanceAdminMarkingTab
-            API={import.meta.env.VITE_API_URL || 'http://localhost:5001'}
+            API={API_BASE_URL}
             token={token}
             user={facultyInfo}
             assignedRoles={assignedPerformanceRoles}

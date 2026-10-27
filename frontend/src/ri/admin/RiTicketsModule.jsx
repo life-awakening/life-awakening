@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   MessageSquare,
   RefreshCw,
@@ -160,7 +161,7 @@ export default function RiTicketsModule({
   onNavigateTab,
   activeRedFlagCount: propActiveRedFlagCount
 }) {
-  const activeApiBase = apiBase || import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const activeApiBase = apiBase || API_BASE_URL;
 
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, resolved: 0 });

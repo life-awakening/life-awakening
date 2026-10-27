@@ -29,8 +29,9 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { formatRiDate } from '../shared/riUtils';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 const RATING_OPTIONS = [
   { value: '', label: 'Select Rating', marks: 0 },

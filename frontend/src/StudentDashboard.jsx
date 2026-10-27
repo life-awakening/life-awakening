@@ -18,8 +18,9 @@ import { REQUIRE_STUDENT_PASSWORD_CHANGE } from './config/authConfig'
 import { formatStudentEmail } from './utils/studentEmailHelper'
 import StudentEmergencyContactsTab from './StudentEmergencyContactsTab'
 import StudentCodeOfConductTab from './StudentCodeOfConductTab'
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API = API_BASE_URL;
 
 const SQUAD_COLORS = {
   Surya:     '#0C54A4',
@@ -340,7 +341,7 @@ function StudentProfileTab({ token, setMyData }) {
     if (selectedChildId) {
       headers['x-student-id'] = selectedChildId;
     }
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/profile`, { headers })
+    fetch(`${API_BASE_URL}/api/student/profile`, { headers })
       .then(r => r.json())
       .then(d => { if (d.profile) setProfile(d.profile); setLoading(false) })
       .catch(() => setLoading(false))
@@ -362,7 +363,7 @@ function StudentProfileTab({ token, setMyData }) {
     }
     setPassLoading(true); setPassMsg({ type: '', text: '' })
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/request-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/student/request-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ currentPassword: passForm.currentPassword, newPassword: passForm.newPassword })
@@ -382,7 +383,7 @@ function StudentProfileTab({ token, setMyData }) {
 
   const handleVerifyOtp = async (otpCode) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/verify-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/student/verify-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ otp: otpCode })
@@ -405,7 +406,7 @@ function StudentProfileTab({ token, setMyData }) {
 
   const handleResendOtp = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/resend-password-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/student/resend-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
       })
@@ -1635,7 +1636,7 @@ export default function StudentDashboard() {
   const markAllAsRead = async () => {
 
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/read`, {
+      await fetch(`${API_BASE_URL}/api/superadmin/notifications/read`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1723,7 +1724,7 @@ export default function StudentDashboard() {
     setCertLoading(true)
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/certificate-data`,
+        `${API_BASE_URL}/api/student/certificate-data`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const data = await res.json()
@@ -1751,7 +1752,7 @@ export default function StudentDashboard() {
     setJourneyLoading(true)
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/ltc-summary/${currentUser.id}`,
+        `${API_BASE_URL}/api/student/ltc-summary/${currentUser.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       
@@ -1797,7 +1798,7 @@ export default function StudentDashboard() {
       if (targetStudentId) {
         reqHeaders['x-student-id'] = targetStudentId.toString();
       }
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/submit-undertaking`, {
+      const res = await fetch(`${API_BASE_URL}/api/student/submit-undertaking`, {
         method: 'POST',
         headers: reqHeaders,
         body: JSON.stringify({ 
@@ -1881,7 +1882,7 @@ export default function StudentDashboard() {
 
   const handlePrintUndertaking = () => {
     if (myData?.id) {
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/undertaking/pdf/${myData.id}?token=${token}`;
+      const url = `${API_BASE_URL}/api/student/undertaking/pdf/${myData.id}?token=${token}`;
       window.open(url, '_blank');
     }
   }
@@ -1977,7 +1978,7 @@ export default function StudentDashboard() {
                         style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }} 
                         onClick={async () => {
                           try {
-                            await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/read`, {
+                            await fetch(`${API_BASE_URL}/api/superadmin/notifications/read`, {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -2069,7 +2070,7 @@ export default function StudentDashboard() {
       if (isParent && selectedId) {
         reqHeaders['x-student-id'] = selectedId;
       }
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/dashboard`, { headers: reqHeaders })
+      const res = await fetch(`${API_BASE_URL}/api/student/dashboard`, { headers: reqHeaders })
       if (res.status === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
@@ -2113,35 +2114,35 @@ export default function StudentDashboard() {
         }
       }
 
-      const schedRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/schedules`, { headers: reqHeaders })
+      const schedRes = await fetch(`${API_BASE_URL}/api/student/schedules`, { headers: reqHeaders })
       const schedData = await schedRes.json()
       if (schedRes.ok) setSchedules(schedData.schedules || [])
 
-      const attRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/attendance`, { headers: reqHeaders })
+      const attRes = await fetch(`${API_BASE_URL}/api/student/attendance`, { headers: reqHeaders })
       const attData = await attRes.json()
       if (attRes.ok) setAttendance(attData.attendance || [])
 
-      const evalRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/evaluations`, { headers: reqHeaders })
+      const evalRes = await fetch(`${API_BASE_URL}/api/student/evaluations`, { headers: reqHeaders })
       const evalData = await evalRes.json()
       if (evalRes.ok) {
         setEvaluations(evalData.evaluations || [])
         setEvalSummaries(evalData.summaries || [])
       }
 
-      const notifRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/superadmin/notifications/me`, { headers: reqHeaders })
+      const notifRes = await fetch(`${API_BASE_URL}/api/superadmin/notifications/me`, { headers: reqHeaders })
       const notifData = await notifRes.json()
       if (notifRes.ok) {
         setDbNotifications((notifData.notifications || []).slice(0, 6))
         setDbUnreadCount(notifData.unread || 0)
       }
 
-      const certsRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/certificates/my-certificates`, { headers: reqHeaders })
+      const certsRes = await fetch(`${API_BASE_URL}/api/certificates/my-certificates`, { headers: reqHeaders })
       const certsData = await certsRes.json()
       if (certsRes.ok) {
         setCustomCertificates(certsData.certificates || [])
       }
 
-      const fbRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/feedback/my-submissions`, { headers: reqHeaders })
+      const fbRes = await fetch(`${API_BASE_URL}/api/feedback/my-submissions`, { headers: reqHeaders })
       if (fbRes.ok) {
         const fbData = await fbRes.json()
         if (fbData.submissions && Array.isArray(fbData.submissions)) {
@@ -2240,7 +2241,7 @@ export default function StudentDashboard() {
                 const policyNumber = e.target.elements.policyNumber.value.trim();
                 if (!provider || !policyNumber) return alert('Please enter both Insurance Provider and Policy Number.');
                 try {
-                  const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/submit-insurance`, {
+                  const res = await fetch(`${API_BASE_URL}/api/student/submit-insurance`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ provider, policy_number: policyNumber })
@@ -2313,7 +2314,7 @@ export default function StudentDashboard() {
                   if (!signedName) return alert('Please enter your full name as signature.');
                   
                   try {
-                    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student/submit-undertaking`, {
+                    const res = await fetch(`${API_BASE_URL}/api/student/submit-undertaking`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                       body: JSON.stringify({ 
@@ -3861,7 +3862,7 @@ export default function StudentDashboard() {
                       </div>
                       <button
                         onClick={() => {
-                          const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+                          const API = API_BASE_URL;
                           const link = document.createElement('a');
                           const rawUrl = c.data?.url;
                           const finalToken = token || localStorage.getItem('token') || '';

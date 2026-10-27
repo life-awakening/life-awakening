@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   LifeBuoy,
   MessageSquare,
@@ -15,7 +16,7 @@ import {
   UserCheck
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiStudentSupportTab({ token }) {
   const [tickets, setTickets] = useState([]);

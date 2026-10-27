@@ -24,8 +24,9 @@ import {
   validateFamilyRecord
 } from '../shared/riFamilySurveySchema';
 import { downloadFamilySurveyPdf } from '../utils/riFormHardCopyPdf';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 // Legacy key was shared by ALL users of a browser (cross-student data leak). It is purged, never read.
 const LEGACY_LOCAL_STORAGE_DRAFT_KEY = 'ri_family_surveys_offline_draft_v1';
 const LOCAL_STORAGE_DRAFT_PREFIX = 'ri_family_surveys_offline_draft_v2';

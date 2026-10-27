@@ -5,8 +5,9 @@ import lottie from 'lottie-web'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import independenceDayAnimation from './assets/Happy Independence Day.json'
 import { REQUIRE_STUDENT_PASSWORD_CHANGE } from './config/authConfig'
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 function IndependenceDaySplash({ onComplete }) {
   const containerRef = useRef(null);
@@ -294,7 +295,7 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiBase = API_BASE_URL;
       const res = await fetch(`${apiBase}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   Mail, Send, Eye, CheckCircle2, AlertTriangle, AlertCircle, RefreshCw,
   Search, Filter, Calendar, Users, User, ShieldCheck, MapPin, Compass,
@@ -6,7 +7,7 @@ import {
   FileText, History, Info, Sparkles, Building, Layers, CheckCircle
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 const RI_TEMPLATES = {
   welcome: {

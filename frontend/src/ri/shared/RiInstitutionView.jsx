@@ -8,8 +8,9 @@ import {
 import { INSTITUTION_FORM_SECTIONS } from './riInstitutionSchema';
 import SecureImage from './SecureImage';
 import { resolveCleanFileUrl, openSecureFile } from '../utils/secureFileHelpers';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = API_BASE_URL;
 
 // Clean URL resolver without token parameter leakage
 const resolveImageUrl = (url) => resolveCleanFileUrl(url);

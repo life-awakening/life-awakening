@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, KeyRound, CheckCircle2, AlertCircle, Eye, EyeOff, ShieldCheck, Check, ArrowLeft, X } from 'lucide-react';
 import PasswordOtpModal from './PasswordOtpModal';
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = '', onPasswordResetSuccess }) {
   const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP, 3: New Password, 4: Success
@@ -18,7 +19,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const apiBase = API_BASE_URL;
 
   // Sync initial email when modal opens
   useEffect(() => {

@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Shield, RefreshCw, Search, Award, Folder, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { OFFICIAL_HIERARCHY } from './hierarchy'
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API = API_BASE_URL;
 
 export default function ReportsModule({ token, toast, user, isReadOnly = false }) {
   const { t } = useLanguage()

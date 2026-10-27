@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle } from 'lucide-react';
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function VerifySlip() {
   const [searchParams] = useSearchParams();
@@ -19,7 +20,7 @@ export default function VerifySlip() {
 
     const verifyBarcode = async () => {
       try {
-        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        const apiBase = API_BASE_URL;
         const apiUrl = `${apiBase}/api/verify?barcode=${encodeURIComponent(barcode)}`;
         const response = await fetch(apiUrl);
         const data = await response.json();

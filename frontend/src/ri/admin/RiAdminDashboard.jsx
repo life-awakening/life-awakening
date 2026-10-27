@@ -23,8 +23,9 @@ import RiCommunicationModule from './RiCommunicationModule';
 import RiPanelMediaViewer from '../shared/RiPanelMediaViewer';
 import RiFacultyUploadsModule from './RiFacultyUploadsModule';
 import RiAuditLogsModule from './RiAuditLogsModule';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiAdminDashboard() {
   const navigate = useNavigate();

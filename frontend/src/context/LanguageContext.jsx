@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { translations as staticTranslations } from '../utils/translations';
+import API_BASE_URL from '@/config/apiConfig';
 
 const LanguageContext = createContext();
 
@@ -12,7 +13,7 @@ export function LanguageProvider({ children }) {
 
   const fetchDbTranslations = async () => {
     try {
-      const api = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const api = API_BASE_URL;
       const res = await fetch(`${api}/api/translations`);
       if (res.ok) {
         const data = await res.json();

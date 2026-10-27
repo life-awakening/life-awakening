@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Award, Download, RefreshCw } from 'lucide-react'
 import { useLanguage } from './context/LanguageContext'
 import { generateCertificate } from './utils/generateCertificate'
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function UserCertificatesTab({ token, myData, canAccessCertificates }) {
   const { t } = useLanguage()
@@ -9,7 +10,7 @@ export default function UserCertificatesTab({ token, myData, canAccessCertificat
   const [loading, setLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [certLoading, setCertLoading] = useState(false)
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+  const API = API_BASE_URL;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768)

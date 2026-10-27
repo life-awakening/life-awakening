@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import { 
   AlertTriangle, 
   UserX, 
@@ -21,7 +22,7 @@ import {
   X
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiFacultyRedFlagTab({ token, isMobile: propIsMobile, batchId, panelId }) {
   const [internalIsMobile, setInternalIsMobile] = useState(

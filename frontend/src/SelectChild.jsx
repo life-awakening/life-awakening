@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, ArrowRight, School, BookOpen, MapPin, User, AlertCircle, RefreshCw } from 'lucide-react';
+import API_BASE_URL from '@/config/apiConfig';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = API_BASE_URL;
 
 export default function SelectChild() {
   const navigate = useNavigate();

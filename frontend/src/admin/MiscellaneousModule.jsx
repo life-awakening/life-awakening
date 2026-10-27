@@ -4,6 +4,7 @@ import {
   Search, X 
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import API_BASE_URL from '@/config/apiConfig';
 
 // Local Modal helper
 function Modal({ open, onClose, title, children, size = '' }) {
@@ -25,7 +26,7 @@ function Modal({ open, onClose, title, children, size = '' }) {
   );
 }
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function MiscellaneousModule({ token, toast }) {
   const { t } = useLanguage();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import API_BASE_URL from '@/config/apiConfig';
 import {
   AlertTriangle,
   HeartPulse,
@@ -22,7 +23,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = API_BASE_URL;
 
 export default function RiRedFlagsModule({ token, userRole = '' }) {
   const [redFlags, setRedFlags] = useState([]);

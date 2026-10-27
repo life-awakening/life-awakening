@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { formatStudentEmail } from '../utils/studentEmailHelper'
+import API_BASE_URL from '@/config/apiConfig';
 
 export default function GlobalSearchModule({ token, toast }) {
   const { t } = useLanguage()
@@ -30,7 +31,7 @@ export default function GlobalSearchModule({ token, toast }) {
     const delayDebounce = setTimeout(async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/global-search?query=${encodeURIComponent(query)}`,
+          `${API_BASE_URL}/api/admin/global-search?query=${encodeURIComponent(query)}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`
