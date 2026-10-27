@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logoo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <script>
+      (function() {
+        try {
+          var p = window.location.pathname || '';
+          var isRiWorkspace = p.indexOf('/ri-workspace') === 0;
+          var isRi = p.indexOf('/ri-') === 0 && !isRiWorkspace;
+          var isLogin = p === '/login' || p === '/' || !p;
+          var themeColor = isRi ? '#047857' : (isLogin ? '#eef5fc' : '#ffffff');
+          var appleStatus = isRi ? 'black-translucent' : 'default';
+          var metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) metaTheme.setAttribute('content', themeColor);
+          var metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          if (metaApple) metaApple.setAttribute('content', appleStatus);
+          document.documentElement.style.backgroundColor = themeColor;
+        } catch(e) {}
+      })();
+    </script>
+    <meta name="description" content="Life Awakening Program — Management System by MIT-WPU. Manage batches, students, faculty, squads, and attendance."/>
+    <meta property="og:title" content="Life Awakening Program | LAP"/>
+    <meta property="og:description" content="Institutional platform for LAP batch management, student tracking, and faculty coordination."/>
+    <meta property="og:image" content="/logoo.png"/>
+    <meta property="og:type" content="website"/>
+    <meta name="apple-mobile-web-app-title" content="LAP" />
+    <link rel="apple-touch-icon" href="/logoo.png" />
+    <link rel="apple-touch-startup-image" href="/spla.png" />
+
+    <!-- Non-blocking Google Fonts: preconnect for DNS + TLS, then load with font-display=swap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" media="print" onload="this.media='all'"/>
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+    </noscript>
+    <script src="/tailwind-config.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <title>Life Awakening Program | LAP</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
