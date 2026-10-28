@@ -234,7 +234,10 @@ const login = async (req, res) => {
     let authorizedChildren = [];
     if (user.role === 'parent') {
       const childrenRes = await pool.query(
-        `SELECT u.id, u.name, u.school, u.school_branch, u.class_grade, u.division, u.gender, u.dob,
+        `SELECT u.id,
+                COALESCE(u.system_student_id, 'LA-' || LPAD(u.id::text, 5, '0')) AS student_id,
+                u.system_student_id,
+                u.name, u.school, u.school_branch, u.class_grade, u.division, u.gender, u.dob,
                 ps.relationship, ps.is_primary
          FROM parent_students ps
          JOIN users u ON ps.student_id = u.id
@@ -253,6 +256,8 @@ const login = async (req, res) => {
       token,
       user: {
         id: user.id,
+        system_student_id: user.system_student_id || null,
+        student_id: user.system_student_id || ('LA-' + String(user.id).padStart(5, '0')),
         email: (user.email && user.email.toLowerCase().endsWith('@lifeawakening.internal')) ? ((user.personal_email && !user.personal_email.toLowerCase().endsWith('@lifeawakening.internal')) ? user.personal_email : null) : user.email,
         internal_email: user.email,
         role: user.role,
@@ -260,6 +265,7 @@ const login = async (req, res) => {
         department: user.department, panel: user.panel, division: user.division,
         school: user.school, squad: user.batch_squad || user.squad || null,
         password_changed: user.password_changed,
+        onboarding_completed: Boolean(user.onboarding_completed || user.undertaking_submitted),
         undertaking_submitted: Boolean(user.undertaking_submitted),
         is_performance_admin: isPerformanceAdmin,
         performance_roles: perfRoles,
@@ -279,7 +285,8 @@ const getParentChildren = async (req, res) => {
     const parentId = req.user.id;
     const childrenRes = await pool.query(
       `SELECT u.id,
-              'LA-' || LPAD(u.id::text, 5, '0') AS student_id,
+              COALESCE(u.system_student_id, 'LA-' || LPAD(u.id::text, 5, '0')) AS student_id,
+              u.system_student_id,
               u.name, u.school, u.school_branch, u.class_grade, u.division, u.gender, u.dob,
               ps.relationship, ps.is_primary
        FROM parent_students ps

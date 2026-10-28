@@ -1127,12 +1127,12 @@ const getSquadAttendanceSummary = async (req, res) => {
 
     // Check which days have attendance recorded in this batch
     const daysRes = await pool.query(
-      "SELECT DISTINCT day FROM attendance WHERE batch_id = $1 AND day IS NOT NULL ORDER BY day ASC",
+      "SELECT DISTINCT day FROM attendance WHERE batch_id = $1 AND day IS NOT NULL AND day <= 4 ORDER BY day ASC",
       [batchId]
     );
     const recordedDaysSet = new Set(daysRes.rows.map(r => parseInt(r.day, 10)));
 
-    // Query squad-wise day 1 to 5 attendance
+    // Query squad-wise day 1 to 4 attendance
     const query = `
       SELECT 
         COALESCE(NULLIF(TRIM(bs.squad), ''), 'Unassigned') as squad,
@@ -1141,8 +1141,7 @@ const getSquadAttendanceSummary = async (req, res) => {
         COUNT(DISTINCT CASE WHEN a.day = 1 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day1_present,
         COUNT(DISTINCT CASE WHEN a.day = 2 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day2_present,
         COUNT(DISTINCT CASE WHEN a.day = 3 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day3_present,
-        COUNT(DISTINCT CASE WHEN a.day = 4 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day4_present,
-        COUNT(DISTINCT CASE WHEN a.day = 5 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day5_present
+        COUNT(DISTINCT CASE WHEN a.day = 4 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day4_present
       FROM batch_students bs
       LEFT JOIN attendance a ON a.student_id = bs.student_id AND a.batch_id = bs.batch_id
       WHERE bs.batch_id = $1
@@ -1207,7 +1206,7 @@ const getSquadAttendanceSummary = async (req, res) => {
       const squadLeaders = allLeaders.filter(l => (l.squad || '').trim().toLowerCase() === sName.trim().toLowerCase());
       
       const dayData = {};
-      for (let d = 1; d <= 5; d++) {
+      for (let d = 1; d <= 4; d++) {
         const isRecorded = recordedDaysSet.has(d);
         const present = parseInt(r[`day${d}_present`], 10) || 0;
         const absent = isRecorded ? Math.max(0, total - present) : 0;
@@ -1242,7 +1241,7 @@ const getSquadAttendanceSummary = async (req, res) => {
       dnr_count: squads.reduce((acc, s) => acc + s.dnr_count, 0)
     };
 
-    for (let d = 1; d <= 5; d++) {
+    for (let d = 1; d <= 4; d++) {
       const isRecorded = recordedDaysSet.has(d);
       const totalAttended = squads.reduce((acc, s) => acc + s[`day${d}`].attended, 0);
       const totalNotAttended = isRecorded ? Math.max(0, totals.total_students - totalAttended) : 0;
@@ -1261,11 +1260,11 @@ const getSquadAttendanceSummary = async (req, res) => {
     // 1. Core activities list definition
     const CORE_ACTIVITIES = [
       { key: 'orientation', name: 'Orientation & Fall-in', validDays: [1], description: 'Day 1 Fall-in & Campus Orientation' },
-      { key: 'agriculture', name: 'Agriculture & Nature', validDays: [2, 3, 4, 5], description: 'Organic farming, village immersion & soil science' },
-      { key: 'physical', name: 'Physical Fitness & Sports', validDays: [2, 3, 4, 5], description: 'Morning PT, sports, obstacle courses & kho-kho' },
-      { key: 'leadership', name: 'Team Building & Leadership', validDays: [2, 3, 4, 5], description: 'Leadership labs, squad challenges & debate' },
-      { key: 'patriotism', name: 'Patriotism & Nation Building', validDays: [2, 3, 4, 5], description: 'National values, shramdaan & social service' },
-      { key: 'spirituality', name: 'Spirituality & Inner Peace', validDays: [2, 3, 4, 5], description: 'Meditation, mindfulness & universal values' }
+      { key: 'agriculture', name: 'Agriculture & Nature', validDays: [2, 3, 4], description: 'Organic farming, village immersion & soil science' },
+      { key: 'physical', name: 'Physical Fitness & Sports', validDays: [2, 3, 4], description: 'Morning PT, sports, obstacle courses & kho-kho' },
+      { key: 'leadership', name: 'Team Building & Leadership', validDays: [2, 3, 4], description: 'Leadership labs, squad challenges & debate' },
+      { key: 'patriotism', name: 'Patriotism & Nation Building', validDays: [2, 3, 4], description: 'National values, shramdaan & social service' },
+      { key: 'spirituality', name: 'Spirituality & Inner Peace', validDays: [2, 3, 4], description: 'Meditation, mindfulness & universal values' }
     ];
 
     // Query activity/pillar day-wise attendance
@@ -1331,7 +1330,7 @@ const getSquadAttendanceSummary = async (req, res) => {
     const totalBatchStudents = squads.reduce((acc, s) => acc + s.total_students, 0);
     const totalDnr = squads.reduce((acc, s) => acc + s.dnr_count, 0);
 
-    for (let d = 1; d <= 5; d++) {
+    for (let d = 1; d <= 4; d++) {
       const isRecorded = recordedDaysSet.has(d);
       const totalAttended = isRecorded ? (dayTotalsMap[d] !== undefined ? dayTotalsMap[d] : squads.reduce((acc, s) => acc + s[`day${d}`].attended, 0)) : 0;
       const totalNotAttended = isRecorded ? Math.max(0, totalBatchStudents - totalAttended) : 0;
@@ -1349,7 +1348,7 @@ const getSquadAttendanceSummary = async (req, res) => {
 
     const activities = CORE_ACTIVITIES.map(act => {
       const dayData = {};
-      for (let d = 1; d <= 5; d++) {
+      for (let d = 1; d <= 4; d++) {
         const isValidDay = act.validDays.includes(d);
         const isRecorded = recordedDaysSet.has(d);
         const entry = actAttendanceMap[`${act.key}_${d}`];
@@ -2515,10 +2514,24 @@ const generateReport = async (req, res) => {
       } else {
         if (squad === 'All') {
           membersRes = await pool.query(`
-            SELECT u.id, u.name, u.prn, u.email, bs.squad, bs.room, bs.room_designation, u.panel,
+            SELECT u.id, u.name, u.prn,
+                   COALESCE(
+                     (SELECT p.email FROM parent_students ps JOIN users p ON ps.parent_id = p.id WHERE ps.student_id = u.id AND ps.is_primary = true LIMIT 1),
+                     (SELECT p.email FROM parent_students ps JOIN users p ON ps.parent_id = p.id WHERE ps.student_id = u.id LIMIT 1),
+                     CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END,
+                     CASE WHEN u.email NOT LIKE '%@lifeawakening.internal' THEN u.email ELSE '—' END
+                   ) AS email,
+                   bs.squad, bs.room, bs.room_designation, u.panel,
                    u.undertaking_submitted, u.tshirt_size, u.jain_food, u.monday_fast, u.photo_video_consent, u.tshirt_consent, u.data_consent, u.bag_check_consent,
                    u.undertaking_signed_name, u.undertaking_signed_date, u.emergency_contact_name, u.emergency_contact_mobile, u.emergency_contact_relation,
-                   u.blood_group, u.medical_conditions, u.consent_medical
+                   u.blood_group, u.medical_conditions, u.consent_medical,
+                   u.class_grade, u.school, u.age, u.parent_name, u.parent_relationship, u.parent_mobile, u.address,
+                   u.med_allergies, u.med_asthma, u.med_epilepsy, u.med_medication, u.med_physical_limitation, u.med_dietary_restriction, u.med_other, u.med_details,
+                   u.parent_consent_confirmed,
+                   COALESCE(
+                     (SELECT pu.email FROM parent_students ps2 JOIN users pu ON ps2.parent_id = pu.id WHERE ps2.student_id = u.id ORDER BY ps2.is_primary DESC NULLS LAST LIMIT 1),
+                     CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END
+                   ) as parent_contact_email
             FROM batch_students bs
             JOIN users u ON u.id = bs.student_id
             WHERE bs.batch_id = $1
@@ -2526,10 +2539,24 @@ const generateReport = async (req, res) => {
           `, [batchId]);
         } else {
           membersRes = await pool.query(`
-            SELECT u.id, u.name, u.prn, u.email, bs.squad, bs.room, bs.room_designation, u.panel,
+            SELECT u.id, u.name, u.prn,
+                   COALESCE(
+                     (SELECT p.email FROM parent_students ps JOIN users p ON ps.parent_id = p.id WHERE ps.student_id = u.id AND ps.is_primary = true LIMIT 1),
+                     (SELECT p.email FROM parent_students ps JOIN users p ON ps.parent_id = p.id WHERE ps.student_id = u.id LIMIT 1),
+                     CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END,
+                     CASE WHEN u.email NOT LIKE '%@lifeawakening.internal' THEN u.email ELSE '—' END
+                   ) AS email,
+                   bs.squad, bs.room, bs.room_designation, u.panel,
                    u.undertaking_submitted, u.tshirt_size, u.jain_food, u.monday_fast, u.photo_video_consent, u.tshirt_consent, u.data_consent, u.bag_check_consent,
                    u.undertaking_signed_name, u.undertaking_signed_date, u.emergency_contact_name, u.emergency_contact_mobile, u.emergency_contact_relation,
-                   u.blood_group, u.medical_conditions, u.consent_medical
+                   u.blood_group, u.medical_conditions, u.consent_medical,
+                   u.class_grade, u.school, u.age, u.parent_name, u.parent_relationship, u.parent_mobile, u.address,
+                   u.med_allergies, u.med_asthma, u.med_epilepsy, u.med_medication, u.med_physical_limitation, u.med_dietary_restriction, u.med_other, u.med_details,
+                   u.parent_consent_confirmed,
+                   COALESCE(
+                     (SELECT pu.email FROM parent_students ps2 JOIN users pu ON ps2.parent_id = pu.id WHERE ps2.student_id = u.id ORDER BY ps2.is_primary DESC NULLS LAST LIMIT 1),
+                     CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END
+                   ) as parent_contact_email
             FROM batch_students bs
             JOIN users u ON u.id = bs.student_id
             WHERE bs.batch_id = $1 AND bs.squad = $2
@@ -2639,43 +2666,68 @@ const generateReport = async (req, res) => {
 
         const pnlName = s.panel ? String(s.panel).trim() : (s.division || 'Unassigned');
 
+        const medCondsList = [];
+        if (s.med_allergies) medCondsList.push('Allergies');
+        if (s.med_asthma) medCondsList.push('Asthma');
+        if (s.med_epilepsy) medCondsList.push('Epilepsy');
+        if (s.med_medication) medCondsList.push('Regular Medication');
+        if (s.med_physical_limitation) medCondsList.push('Physical Limitation');
+        if (s.med_dietary_restriction) medCondsList.push('Dietary Restriction');
+        if (s.med_other) medCondsList.push('Other');
+        const medCondsSummary = medCondsList.length > 0 
+          ? medCondsList.join(', ') 
+          : (s.medical_conditions && String(s.medical_conditions).trim() ? s.medical_conditions : 'None');
+
+        const pEmail = s.parent_contact_email || s.parent_email || '';
+
         return [
-          s.name,
-          s.prn || '',
-          s.email || '',
-          s.squad || '',
-          s.undertaking_submitted ? 'Yes' : 'No',
-          s.undertaking_signed_name || 'Not Signed',
-          s.undertaking_signed_date ? new Date(s.undertaking_signed_date).toLocaleDateString() : 'Not Signed',
-          s.tshirt_size || '—',
-          s.jain_food ? (String(s.jain_food).toLowerCase() === 'yes' || s.jain_food === true ? 'Yes' : 'No') : (s.undertaking_submitted ? 'No' : '—'),
-          s.monday_fast ? (String(s.monday_fast).toLowerCase() === 'yes' || s.monday_fast === true ? 'Yes' : 'No') : (s.undertaking_submitted ? 'No' : '—'),
-          s.photo_video_consent ? 'Yes' : 'No',
-          s.tshirt_consent ? 'Yes' : 'No',
-          s.data_consent ? 'Yes' : 'No',
-          s.bag_check_consent ? 'Yes' : 'No',
-          s.consent_medical ? 'Yes' : 'No',
-          s.emergency_contact_name || '—',
-          s.emergency_contact_mobile || '—',
-          s.emergency_contact_relation || '—',
-          s.blood_group || '—',
-          s.medical_conditions || '—',
-          evals['agriculture'] !== undefined ? evals['agriculture'] : '—',
-          evals['physical'] !== undefined ? evals['physical'] : '—',
-          evals['leadership'] !== undefined ? evals['leadership'] : '—',
-          evals['patriotism'] !== undefined ? evals['patriotism'] : '—',
-          evals['spirituality'] !== undefined ? evals['spirituality'] : '—',
-          attRate,
-          fbs['Pre-LTC'] || '—',
-          fbs['Post-LTC'] || '—',
-          s.room || '—',
-          s.id,
-          pnlName,
-          s.room_designation || '—',
-          fbs['Service-Trainers'] || '—',
-          fbs['Service-Trainers-Raw'] || '',
-          fbs['Pre-LTC-Raw'] || '',
-          fbs['Post-LTC-Raw'] || ''
+          s.name, // 0
+          s.prn || '', // 1
+          s.email || '', // 2
+          s.squad || '', // 3
+          s.undertaking_submitted ? 'Yes' : 'No', // 4
+          s.undertaking_signed_name || 'Not Signed', // 5
+          s.undertaking_signed_date ? new Date(s.undertaking_signed_date).toLocaleDateString() : 'Not Signed', // 6
+          s.tshirt_size || '—', // 7
+          s.jain_food ? (String(s.jain_food).toLowerCase() === 'yes' || s.jain_food === true ? 'Yes' : 'No') : (s.undertaking_submitted ? 'No' : '—'), // 8
+          s.monday_fast ? (String(s.monday_fast).toLowerCase() === 'yes' || s.monday_fast === true ? 'Yes' : 'No') : (s.undertaking_submitted ? 'No' : '—'), // 9
+          s.photo_video_consent ? 'Yes' : 'No', // 10
+          s.tshirt_consent ? 'Yes' : 'No', // 11
+          s.data_consent ? 'Yes' : 'No', // 12
+          s.bag_check_consent ? 'Yes' : 'No', // 13
+          s.consent_medical ? 'Yes' : 'No', // 14
+          s.emergency_contact_name || '—', // 15
+          s.emergency_contact_mobile || '—', // 16
+          s.emergency_contact_relation || '—', // 17
+          s.blood_group || '—', // 18
+          s.medical_conditions || '—', // 19
+          evals['agriculture'] !== undefined ? evals['agriculture'] : '—', // 20
+          evals['physical'] !== undefined ? evals['physical'] : '—', // 21
+          evals['leadership'] !== undefined ? evals['leadership'] : '—', // 22
+          evals['patriotism'] !== undefined ? evals['patriotism'] : '—', // 23
+          evals['spirituality'] !== undefined ? evals['spirituality'] : '—', // 24
+          attRate, // 25
+          fbs['Pre-LTC'] || '—', // 26
+          fbs['Post-LTC'] || '—', // 27
+          s.room || '—', // 28
+          s.id, // 29
+          pnlName, // 30
+          s.room_designation || '—', // 31
+          fbs['Service-Trainers'] || '—', // 32
+          fbs['Service-Trainers-Raw'] || '', // 33
+          fbs['Pre-LTC-Raw'] || '', // 34
+          fbs['Post-LTC-Raw'] || '', // 35
+          s.class_grade || '—', // 36
+          s.school || '—', // 37
+          s.age ? String(s.age) : '—', // 38
+          s.parent_name || s.emergency_contact_name || '—', // 39
+          s.parent_relationship || s.emergency_contact_relation || '—', // 40
+          s.parent_mobile || s.emergency_contact_mobile || '—', // 41
+          pEmail || '—', // 42
+          s.address || '—', // 43
+          medCondsSummary, // 44
+          s.med_details && String(s.med_details).trim() ? s.med_details : 'None', // 45
+          (s.parent_consent_confirmed || s.undertaking_submitted) ? 'Yes' : 'No' // 46
         ];
       });
 
@@ -3548,20 +3600,19 @@ const generateReport = async (req, res) => {
         data.push(['Page 4: LAP Program at LTC', `Hostel Allotment #${idx + 1} (${s.name})`, `${s.name} | PRN: ${s.prn || '—'} | Dept: ${s.department || s.school || '—'} | Squad: ${s.squad || 'Unassigned'} | Room: ${s.room || '101'} (${s.room_designation || 'Hostel'}) | Role: ${s.is_squad_leader ? 'Squad Leader' : 'Member'}`, 'Annexure 9 (Students)', p4Status]);
       });
 
-      // 5 Days Attendance at LTC Header
-      data.push(['Page 4: LAP Program at LTC', '5 Days Attendance at LTC (Annexure 10)', p4.annexure_10 || 'Students Attendance as given by Faculty: (Filled by Mr. Shardul Shirolkar) Annexure 10', 'Annexure 10', p4Status]);
+      // 4 Days Attendance at LTC Header
+      data.push(['Page 4: LAP Program at LTC', '4 Days Attendance at LTC (Annexure 10)', p4.annexure_10 || 'Students Attendance as given by Faculty: (Filled by Mr. Shardul Shirolkar) Annexure 10', 'Annexure 10', p4Status]);
 
-      // Real 5-Day Squad-Wise Attendance Summary Matrix
+      // Real 4-Day Squad-Wise Attendance Summary Matrix
       const totalStud = students.length || 40;
       const dnrCount = students.filter(s => s.is_dnr).length;
       const activeStud = totalStud - dnrCount;
 
-      data.push(['Page 4: LAP Program at LTC', '5-Day Attendance Aggregate Overview', `${activeStud} / ${activeStud} Active Students Present (100.0% Compliance Rate | 0 Absent | ${dnrCount} DNR)`, 'Attendance Summary', p4Status]);
+      data.push(['Page 4: LAP Program at LTC', '4-Day Attendance Aggregate Overview', `${activeStud} / ${activeStud} Active Students Present (100.0% Compliance Rate | 0 Absent | ${dnrCount} DNR)`, 'Attendance Summary', p4Status]);
       data.push(['Page 4: LAP Program at LTC', 'Day 1 Residential Attendance', `${activeStud} / ${activeStud} Attended (100.0%) | Fall-in, Arrival & Orientation`, 'Attendance Matrix', p4Status]);
       data.push(['Page 4: LAP Program at LTC', 'Day 2 Residential Attendance', `${activeStud} / ${activeStud} Attended (100.0%) | Agriculture & Obstacle Drill`, 'Attendance Matrix', p4Status]);
       data.push(['Page 4: LAP Program at LTC', 'Day 3 Residential Attendance', `${activeStud} / ${activeStud} Attended (100.0%) | Yoga, Trekking & Team Drills`, 'Attendance Matrix', p4Status]);
       data.push(['Page 4: LAP Program at LTC', 'Day 4 Residential Attendance', `${activeStud} / ${activeStud} Attended (100.0%) | Survival Camp & Leadership Tasks`, 'Attendance Matrix', p4Status]);
-      data.push(['Page 4: LAP Program at LTC', 'Day 5 Residential Attendance', `${activeStud} / ${activeStud} Attended (100.0%) | Valedictory & Nation Building`, 'Attendance Matrix', p4Status]);
 
       // Squad-Level Attendance Breakdown
       const squadCounts = {};
@@ -3572,7 +3623,7 @@ const generateReport = async (req, res) => {
       const squadKeys = Object.keys(squadCounts).length > 0 ? Object.keys(squadCounts) : ['Surya', 'Aditya', 'Ravi', 'Divakar', 'Mitra', 'Martand', 'Dinkar', 'Prabhakar', 'Bhaskar', 'Tejonidhi'];
       squadKeys.forEach(sq => {
         const sqCount = squadCounts[sq] || Math.max(1, Math.round(activeStud / squadKeys.length));
-        data.push(['Page 4: LAP Program at LTC', `Squad ${sq} Attendance (5 Days)`, `${sqCount} / ${sqCount} Attended (100.0% Perfect Compliance Rate)`, 'Squad Matrix', p4Status]);
+        data.push(['Page 4: LAP Program at LTC', `Squad ${sq} Attendance (4 Days)`, `${sqCount} / ${sqCount} Attended (100.0% Perfect Compliance Rate)`, 'Squad Matrix', p4Status]);
       });
 
       // Pillar-Level Attendance Breakdown
@@ -5396,7 +5447,7 @@ const getLockedStatus = async (req, res) => {
     );
     const batch = batchRes.rows[0];
     if (!batch) {
-      return res.status(404).json({ message: 'Batch not found' });
+      return res.json({ success: true, batch: null, squads: [], summary: null, message: 'No batch present' });
     }
 
     // 2. All students in batch with squad
@@ -5435,11 +5486,11 @@ const getLockedStatus = async (req, res) => {
     // Standard Pillars & Day structure (EXACT same as LTC Coordinator My Attendance)
     const pillarsList = [
       { key: 'bag_checking', name: 'Orientation', days: [1] },
-      { key: 'agriculture', name: 'Agriculture & Nature', days: [2, 3, 4, 5] },
-      { key: 'physical', name: 'Physical Fitness & Sports', days: [2, 3, 4, 5] },
-      { key: 'leadership', name: 'Team Building & Leadership', days: [2, 3, 4, 5] },
-      { key: 'patriotism', name: 'Patriotism & Nation Building', days: [2, 3, 4, 5] },
-      { key: 'spirituality', name: 'Spirituality & Peace', days: [2, 3, 4, 5] }
+      { key: 'agriculture', name: 'Agriculture & Nature', days: [2, 3, 4] },
+      { key: 'physical', name: 'Physical Fitness & Sports', days: [2, 3, 4] },
+      { key: 'leadership', name: 'Team Building & Leadership', days: [2, 3, 4] },
+      { key: 'patriotism', name: 'Patriotism & Nation Building', days: [2, 3, 4] },
+      { key: 'spirituality', name: 'Spirituality & Peace', days: [2, 3, 4] }
     ];
 
     // Collect distinct squads for this batch - ensure all 10 canonical squads are always included
@@ -5492,7 +5543,7 @@ const getLockedStatus = async (req, res) => {
 
       let squadLockedSlots = 0;
       let squadMarkedSlots = 0;
-      const squadPossibleSlots = 21 * studentCount; // 1 + 4*5 = 21 activity-days
+      const squadPossibleSlots = 16 * studentCount; // 1 + 5*3 = 16 activity-days
 
       const pillarStatuses = {};
 

@@ -18,6 +18,7 @@ import { REQUIRE_STUDENT_PASSWORD_CHANGE } from './config/authConfig'
 import { formatStudentEmail } from './utils/studentEmailHelper'
 import StudentEmergencyContactsTab from './StudentEmergencyContactsTab'
 import StudentCodeOfConductTab from './StudentCodeOfConductTab'
+import FirstTimeOnboardingModal from './FirstTimeOnboardingModal'
 import API_BASE_URL from '@/config/apiConfig';
 
 const API = API_BASE_URL;
@@ -479,8 +480,8 @@ function StudentProfileTab({ token, setMyData }) {
 
       <Section title={t("Basic Information")} icon={User}>
         <Field label={t("Full Name")} value={fullName} />
-        <Field label={t("LTC ID")} value={profile.ltc_id} />
-        <Field label={t("PRN")} value={profile.prn} />
+        <Field label={t("Student ID")} value={profile.system_student_id || profile.student_id || profile.ltc_id} />
+        {profile.prn && <Field label={t("PRN")} value={profile.prn} />}
         <Field label={t("Roll Number")} value={profile.roll_number} />
       </Section>
 
@@ -1368,6 +1369,7 @@ export default function StudentDashboard() {
   const [revealStep, setRevealStep] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
   const audioRef = useRef(null)
+  const lastLoadedStudentIdRef = useRef(null)
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -1586,29 +1588,35 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (myData && myData.id) {
-      setUndertakingForm(prev => ({
-        ...prev,
-        studentName: prev.studentName || myData.name || '',
-        studentAge: prev.studentAge || myData.age || '',
-        studentSchool: prev.studentSchool || myData.school || '',
-        studentClassGrade: prev.studentClassGrade || myData.class_grade || '',
-        parentName: prev.parentName || myData.parent_name || '',
-        parentRelationship: prev.parentRelationship || myData.parent_relationship || 'Father',
-        parentMobile: prev.parentMobile || myData.parent_mobile || '',
-        parentEmail: prev.parentEmail || myData.parent_email || '',
-        parentAddress: prev.parentAddress || myData.address || '',
-        signedName: prev.signedName || myData.undertaking_signed_name || myData.parent_name || myData.name || '',
-        medAllergies: myData.med_allergies || false,
-        medAsthma: myData.med_asthma || false,
-        medEpilepsy: myData.med_epilepsy || false,
-        medMedication: myData.med_medication || false,
-        medPhysicalLimitation: myData.med_physical_limitation || false,
-        medDietaryRestriction: myData.med_dietary_restriction || false,
-        medOther: myData.med_other || false,
-        medDetails: myData.med_details || ''
-      }))
+      const isNewStudent = lastLoadedStudentIdRef.current !== myData.id;
+      if (isNewStudent) {
+        lastLoadedStudentIdRef.current = myData.id;
+        setUndertakingForm(prev => ({
+          ...prev,
+          studentName: myData.name || prev.studentName || '',
+          studentAge: myData.age || prev.studentAge || '',
+          studentSchool: myData.school || prev.studentSchool || '',
+          studentClassGrade: myData.class_grade || prev.studentClassGrade || '',
+          parentName: myData.parent_name || prev.parentName || '',
+          parentRelationship: myData.parent_relationship || prev.parentRelationship || 'Father',
+          parentMobile: myData.parent_mobile || prev.parentMobile || '',
+          parentEmail: myData.parent_email || prev.parentEmail || '',
+          parentAddress: myData.address || prev.parentAddress || '',
+          signedName: myData.undertaking_signed_name || myData.parent_name || myData.name || prev.signedName || '',
+          signedDate: myData.undertaking_signed_date || prev.signedDate || new Date().toISOString().split('T')[0],
+          consentAgreed: Boolean(myData.undertaking_submitted),
+          medAllergies: Boolean(myData.med_allergies),
+          medAsthma: Boolean(myData.med_asthma),
+          medEpilepsy: Boolean(myData.med_epilepsy),
+          medMedication: Boolean(myData.med_medication),
+          medPhysicalLimitation: Boolean(myData.med_physical_limitation),
+          medDietaryRestriction: Boolean(myData.med_dietary_restriction),
+          medOther: Boolean(myData.med_other),
+          medDetails: myData.med_details || ''
+        }));
+      }
     }
-  }, [myData])
+  }, [myData?.id])
 
   useEffect(() => {
     if (activeTab === 'undertaking' && !myData.undertaking_submitted) {
@@ -1616,10 +1624,10 @@ export default function StudentDashboard() {
     }
   }, [activeTab, myData.undertaking_submitted]);
 
-  // Undertaking Gate: lock activeTab to 'undertaking' if undertaking is incomplete (allow profile access)
+  // Undertaking Gate: lock activeTab to 'undertaking' if undertaking is incomplete
   useEffect(() => {
     if (myData?.id && !myData.undertaking_submitted) {
-      if (activeTab !== 'undertaking' && activeTab !== 'profile' && activeTab !== 'emergency-contacts') {
+      if (activeTab !== 'undertaking') {
         setActiveTab('undertaking');
       }
     }
@@ -1684,6 +1692,7 @@ export default function StudentDashboard() {
     }
   })();
   const hasMultipleChildren = isParent && Array.isArray(parentChildren) && parentChildren.length > 1;
+  const studentDisplayName = (isParent && selectedStudent?.name) ? selectedStudent.name : (myData?.name || currentUser?.name || 'Student');
 
   useEffect(() => {
     const originalFetch = window.fetch;
@@ -1711,6 +1720,7 @@ export default function StudentDashboard() {
   }, []);
 
   const handleLogout = () => {
+    lastLoadedStudentIdRef.current = null;
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     localStorage.removeItem('selectedStudentId')
@@ -1766,7 +1776,7 @@ export default function StudentDashboard() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const nameSlug = (currentUser.name || 'Student').trim().replace(/\s+/g, '_')
+      const nameSlug = (studentDisplayName || 'Student').trim().replace(/\s+/g, '_')
       a.download = `LTC_Journey_Summary_${nameSlug}.pdf`
       document.body.appendChild(a)
       a.click()
@@ -2114,6 +2124,11 @@ export default function StudentDashboard() {
         }
       }
 
+      // If undertaking is incomplete, skip calling endpoints requiring completed undertaking
+      if (!data.data?.undertaking_submitted) {
+        return;
+      }
+
       const schedRes = await fetch(`${API_BASE_URL}/api/student/schedules`, { headers: reqHeaders })
       const schedData = await schedRes.json()
       if (schedRes.ok) setSchedules(schedData.schedules || [])
@@ -2158,7 +2173,12 @@ export default function StudentDashboard() {
     }
   }
 
-  const needsGate = myData.in_current_batch && (!myData.insured);
+  const isFirstTimeOnboarding = Boolean(
+    myData?.id &&
+    !myData.onboarding_completed &&
+    !myData.undertaking_submitted &&
+    !isParent
+  );
   const needsPasswordChange = REQUIRE_STUDENT_PASSWORD_CHANGE && myData.id && !myData.password_changed && !isParent;
 
   if (needsPasswordChange) {
@@ -2171,293 +2191,33 @@ export default function StudentDashboard() {
     );
   }
 
-  if (needsGate) {
+  if (isFirstTimeOnboarding) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        fontFamily: 'sans-serif'
-      }}>
-        <div style={{
-          width: '100%',
-          maxWidth: '650px',
-          background: 'rgba(255, 255, 255, 0.04)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          padding: '40px',
-          color: '#ffffff'
-        }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ display: 'inline-flex', padding: '12px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '16px', marginBottom: '16px' }}>
-              <ClipboardList size={32} style={{ color: '#0f172a' }} />
-            </div>
-            <h2 style={{ fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px', margin: 0 }}>LTC Onboarding Gate</h2>
-            <p style={{ fontSize: '14px', color: '#94a3b8', marginTop: '8px', lineHeight: '1.5', margin: '8px 0 0 0' }}>
-              Congratulations! You have been selected for the active LTC batch. Before you can access your dashboard, you must submit your insurance details and sign the undertaking form.
-            </p>
-          </div>
-
-          {/* Progress / Checklist */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
-            <div style={{ 
-              background: myData.insured ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.05)', 
-              border: myData.insured ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.1)',
-              borderRadius: '16px', padding: '16px', textAlign: 'center'
-            }}>
-              <p style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0' }}>Insurance Status</p>
-              <h4 style={{ fontSize: '16px', fontWeight: '700', margin: 0, color: '#0f172a' }}>
-                {myData.insured ? 'Completed' : 'Pending Action'}
-              </h4>
-            </div>
-            <div style={{ 
-              background: myData.undertaking_submitted ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.05)', 
-              border: myData.undertaking_submitted ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.1)',
-              borderRadius: '16px', padding: '16px', textAlign: 'center'
-            }}>
-              <p style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0' }}>Undertaking Status</p>
-              <h4 style={{ fontSize: '16px', fontWeight: '700', margin: 0, color: '#0f172a' }}>
-                {myData.undertaking_submitted ? 'Completed' : 'Pending Action'}
-              </h4>
-            </div>
-          </div>
-
-          {/* Form 1: Insurance Details */}
-          {!myData.insured ? (
-            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 16px 0' }}>
-                <span style={{ background: '#0f172a', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>1</span>
-                Submit Insurance Details
-              </h3>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                const provider = e.target.elements.provider.value.trim();
-                const policyNumber = e.target.elements.policyNumber.value.trim();
-                if (!provider || !policyNumber) return alert('Please enter both Insurance Provider and Policy Number.');
-                try {
-                  const res = await fetch(`${API_BASE_URL}/api/student/submit-insurance`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ provider, policy_number: policyNumber })
-                  });
-                  if (res.ok) {
-                    alert('Insurance details submitted successfully!');
-                    fetchDashboardData();
-                  } else {
-                    const errD = await res.json();
-                    alert(errD.message || 'Failed to submit insurance details.');
-                  }
-                } catch (err) {
-                  alert('Error submitting insurance details.');
-                }
-              }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Insurance Provider</label>
-                  <input type="text" name="provider" placeholder="e.g. Star Health / LIC / HDFC Ergo" required 
-                    style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none' }} />
-                </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Policy / Certificate Number</label>
-                  <input type="text" name="policyNumber" placeholder="e.g. POL123456789" required
-                    style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none' }} />
-                </div>
-                <button type="submit" className="btn" style={{ background: '#0f172a', color: 'white', width: '100%', padding: '12px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>
-                  Save & Submit Insurance
-                </button>
-              </form>
-            </div>
-          ) : null}
-
-          {/* Form 2: Undertaking */}
-          {myData.insured && !myData.undertaking_submitted ? (
-            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '24px' }}>
-               <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 16px 0' }}>
-                 <span style={{ background: '#0f172a', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>2</span>
-                 Sign LTC Undertaking Form
-               </h3>
-               <div 
-                 onScroll={(e) => {
-                   const target = e.target;
-                   if (target.scrollHeight - target.scrollTop <= target.clientHeight + 10) {
-                     setBlockedScrollDone(true);
-                   }
-                 }}
-                 style={{ 
-                   maxHeight: '120px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '12px', 
-                   borderRadius: '8px', fontSize: '11px', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.05)'
-                 }}
-               >
-                 <p style={{ margin: '0 0 8px 0', fontWeight: '700' }}>UNDERTAKING & CODE OF CONDUCT FOR LTC</p>
-                 <p style={{ margin: 0 }}>
-                   I hereby solemnly declare and undertake that I will adhere to all the rules, guidelines, and disciplinary standard practices set forth by the LTC program coordinators. I acknowledge that I am solely responsible for my conduct, health, and belongings during the LTC batch. Any acts of insubordination or violation of rules will lead to immediate expulsion from the course and red flagging in the student database.
-                 </p>
-               </div>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  const signedName = e.target.elements.signedName.value.trim();
-                  const photoVideoConsentVal = e.target.elements.photoVideoConsent?.checked;
-                  const tshirtConsentVal = e.target.elements.tshirtConsent?.checked;
-                  const dataConsentVal = e.target.elements.dataConsent?.checked;
-                  const bagCheckConsentVal = e.target.elements.bagCheckConsent?.checked;
-
-                  if (!photoVideoConsentVal) return alert('You must accept the Photo / Video Consent.');
-                  if (!blockedTshirtSize) return alert('Please select a T-Shirt size.');
-                  if (!tshirtConsentVal) return alert('You must accept the T-Shirt Size Consent.');
-                  if (!dataConsentVal) return alert('You must accept the Personal / Health Data Consent.');
-                  if (!bagCheckConsentVal) return alert('You must accept the Bag Checking Consent.');
-                  if (!signedName) return alert('Please enter your full name as signature.');
-                  
-                  try {
-                    const res = await fetch(`${API_BASE_URL}/api/student/submit-undertaking`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                      body: JSON.stringify({ 
-                        signedName, 
-                        signedDate: new Date().toLocaleDateString(), 
-                        tshirtSize: blockedTshirtSize,
-                        jainFood: blockedJainFood,
-                        mondayFast: blockedMondayFast,
-                        photoVideoConsent: photoVideoConsentVal,
-                        tshirtConsent: tshirtConsentVal,
-                        dataConsent: dataConsentVal,
-                        bagCheckConsent: bagCheckConsentVal
-                      })
-                    });
-                    if (res.ok) {
-                      alert('Undertaking signed and submitted successfully!');
-                      fetchDashboardData();
-                    } else {
-                      const errD = await res.json();
-                      alert(errD.message || 'Failed to submit undertaking.');
-                    }
-                  } catch (err) {
-                    alert('Error submitting undertaking.');
-                  }
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" name="agreed" id="agreed" required style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.4' }}>
-                        I agree to the LTC undertaking, rules, and code of conduct.
-                      </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" name="photoVideoConsent" required style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.4' }}>
-                        Photo / Video Consent: I consent to the organisers capturing and using my photographs/videos taken during the Life Awakening Program for academic documentation, university publications, internal communication, promotional material, and official social media platforms. I understand that my personal contact details will not be shared.
-                      </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" name="tshirtConsent" required style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.4' }}>
-                        T-Shirt Size Consent: I consent to provide my T-shirt size information for arranging official LTC program apparel. I confirm that the selected size is correct and understand that changes may not be possible after final submission.
-                      </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" name="dataConsent" required style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.4' }}>
-                        Personal / Health Data Consent: I consent to the organisers collecting and processing my personal/health data solely for program delivery, safety, compliance, academic and administrative purposes.
-                      </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" name="bagCheckConsent" required style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.4' }}>
-                        Bag Checking Consent: I consent to bag checks by authorised staff members if required for safety and security reasons.
-                      </span>
-                    </label>
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Select T-Shirt Size</label>
-                      <select 
-                        value={blockedTshirtSize} 
-                        onChange={(e) => setBlockedTshirtSize(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none', cursor: 'pointer' }}
-                      >
-                        <option value="" style={{ background: '#0f172a' }}>-- Select Size --</option>
-                        {[
-                          { value: '36 - S', label: '36 - S' },
-                          { value: '38 - M', label: '38 - M' },
-                          { value: '40 - L', label: '40 - L' },
-                          { value: '42 - XL', label: '42 - XL' },
-                          { value: '44 - XXL', label: '44 - XXL' },
-                          { value: '46 - XXXL', label: '46 - XXXL' }
-                        ].map(opt => (
-                          <option key={opt.value} value={opt.value} style={{ background: '#0f172a' }}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Jain Food Required?</label>
-                      <select 
-                        value={blockedJainFood} 
-                        onChange={(e) => setBlockedJainFood(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none', cursor: 'pointer' }}
-                      >
-                        <option value="No" style={{ background: '#0f172a' }}>No</option>
-                        <option value="Yes" style={{ background: '#0f172a' }}>Yes</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Monday Fast?</label>
-                      <select 
-                        value={blockedMondayFast} 
-                        onChange={(e) => setBlockedMondayFast(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none', cursor: 'pointer' }}
-                      >
-                        <option value="No" style={{ background: '#0f172a' }}>No</option>
-                        <option value="Yes" style={{ background: '#0f172a' }}>Yes</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Full Name (Digital Signature)</label>
-                    <input type="text" name="signedName" placeholder="Type your full name to sign" required
-                      style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none' }} />
-                  </div>
-                  <button 
-                    type="submit" 
-                    className="btn" 
-                    disabled={!blockedScrollDone || !blockedTshirtSize}
-                    style={{ 
-                      background: (!blockedScrollDone || !blockedTshirtSize) ? '#475569' : '#0f172a', 
-                      color: 'white', 
-                      width: '100%', 
-                      padding: '12px', 
-                      borderRadius: '8px', 
-                      fontWeight: '600', 
-                      border: 'none', 
-                      cursor: (!blockedScrollDone || !blockedTshirtSize) ? 'not-allowed' : 'pointer',
-                      opacity: (!blockedScrollDone || !blockedTshirtSize) ? 0.6 : 1
-                    }}
-                  >
-                    Sign & Submit Undertaking
-                  </button>
-                </form>
-             </div>
-          ) : null}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-            <button className="btn btn-outline" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#94a3b8', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }} onClick={handleLogout}>
-              Logout
-            </button>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>Step {myData.insured ? '2 of 2' : '1 of 2'}</span>
-          </div>
-        </div>
-      </div>
+      <FirstTimeOnboardingModal
+        myData={myData}
+        token={token}
+        API_BASE_URL={API_BASE_URL}
+        isMobile={isMobile}
+        onComplete={(updatedData) => {
+          setMyData(prev => ({
+            ...prev,
+            ...updatedData,
+            onboarding_completed: true,
+            undertaking_submitted: true
+          }));
+          try {
+            const rawUser = localStorage.getItem('user');
+            if (rawUser) {
+              const u = JSON.parse(rawUser);
+              u.onboarding_completed = true;
+              u.undertaking_submitted = true;
+              localStorage.setItem('user', JSON.stringify(u));
+            }
+          } catch (_) {}
+          fetchDashboardData();
+        }}
+        onLogout={handleLogout}
+      />
     );
   }
 
@@ -2624,9 +2384,6 @@ export default function StudentDashboard() {
                   t("Undertaking Form"), 
                   { text: t("Pending"), bg: '#fce8e6', color: '#c5221f' }
                 )}
-                {renderSidebarItem('code-of-conduct', <ShieldCheck />, t("Code of Conduct"))}
-                {renderSidebarItem('emergency-contacts', <Phone />, t("Emergency Contacts"))}
-                {renderSidebarItem('profile', <User />, t("My Profile"))}
               </>
             ) : (
               <>
@@ -2790,45 +2547,47 @@ export default function StudentDashboard() {
             <div 
               className="rounded-full text-white flex items-center justify-center font-bold text-xs flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #ea580c, #c2410c)', width: '32px', height: '32px', fontSize: '11px', transition: 'all 0.3s ease' }}
-              title={currentUser?.name || 'Student'}
+              title={studentDisplayName}
             >
-              {currentUser?.name ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
+              {studentDisplayName ? studentDisplayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
             </div>
             <div style={{ overflow: 'hidden', maxWidth: isCollapsed ? '0px' : '180px', opacity: isCollapsed ? 0 : 1, visibility: isCollapsed ? 'hidden' : 'visible', transition: 'max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, visibility 0.35s', whiteSpace: 'nowrap' }}>
-              <p style={{ fontWeight: '600', fontSize: '12px', color: '#0f172a', lineHeight: '1.2', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{currentUser?.name || t('Student')}</p>
+              <p style={{ fontWeight: '600', fontSize: '12px', color: '#0f172a', lineHeight: '1.2', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{studentDisplayName}</p>
               <p style={{ fontSize: '10px', color: '#64748b', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Student")}</p>
             </div>
           </div>
           
           {/* Action Buttons - unified row with smooth transitions */}
           <div style={{ display: 'flex', gap: '8px', justifyContent: isCollapsed ? 'center' : 'stretch' }}>
-            <button
-              onClick={() => setActiveTab('profile')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: isCollapsed ? '0px' : '6px',
-                padding: isCollapsed ? '8px' : '8px',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#ffffff',
-                color: '#475569',
-                cursor: 'pointer',
-                fontSize: '11.5px',
-                fontWeight: '600',
-                transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
-                flex: isCollapsed ? 'none' : 1,
-                width: isCollapsed ? '36px' : 'auto',
-                height: isCollapsed ? '36px' : 'auto',
-                overflow: 'hidden'
-              }}
-              className="hover:bg-slate-50"
-              title={t("My Profile")}
-            >
-              <User size={13} style={{ flexShrink: 0 }} />
-              <span style={{ maxWidth: isCollapsed ? '0px' : '80px', overflow: 'hidden', opacity: isCollapsed ? 0 : 1, visibility: isCollapsed ? 'hidden' : 'visible', whiteSpace: 'nowrap', transition: 'max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, visibility 0.35s' }}>{t("Profile")}</span>
-            </button>
+            {myData.undertaking_submitted && (
+              <button
+                onClick={() => setActiveTab('profile')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: isCollapsed ? '0px' : '6px',
+                  padding: isCollapsed ? '8px' : '8px',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  fontSize: '11.5px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+                  flex: isCollapsed ? 'none' : 1,
+                  width: isCollapsed ? '36px' : 'auto',
+                  height: isCollapsed ? '36px' : 'auto',
+                  overflow: 'hidden'
+                }}
+                className="hover:bg-slate-50"
+                title={t("My Profile")}
+              >
+                <User size={13} style={{ flexShrink: 0 }} />
+                <span style={{ maxWidth: isCollapsed ? '0px' : '80px', overflow: 'hidden', opacity: isCollapsed ? 0 : 1, visibility: isCollapsed ? 'hidden' : 'visible', whiteSpace: 'nowrap', transition: 'max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, visibility 0.35s' }}>{t("Profile")}</span>
+              </button>
+            )}
             <button
               onClick={handleLogout}
               style={{
@@ -3018,8 +2777,6 @@ export default function StudentDashboard() {
                     t("Undertaking Form"), 
                     { text: t("Pending"), bg: '#fce8e6', color: '#c5221f' }
                   )}
-                  {renderSidebarItem('code-of-conduct', <ShieldCheck />, t("Code of Conduct"))}
-                  {renderSidebarItem('emergency-contacts', <Phone />, t("Emergency Contacts"))}
                   {renderSidebarItem('logout', <LogOut />, t("Sign Out"), null, handleLogout)}
                 </>
               ) : (
@@ -3146,10 +2903,10 @@ export default function StudentDashboard() {
                 className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs"
                 style={{ background: 'linear-gradient(135deg, #ea580c, #c2410c)' }}
               >
-                {currentUser?.name ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
+                {studentDisplayName ? studentDisplayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
               </div>
               <div>
-                <p style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }} className="font-semibold text-xs text-[#0f172a] leading-tight">{currentUser?.name || t('Student')}</p>
+                <p style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }} className="font-semibold text-xs text-[#0f172a] leading-tight">{studentDisplayName}</p>
                 <p style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }} className="text-[10px] text-slate-500">{t("Student")}</p>
               </div>
             </div>
@@ -3329,17 +3086,16 @@ export default function StudentDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 2 }}>
                     {/* Avatar circle */}
                     <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'linear-gradient(135deg, #1d4ed8, #60a5fa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: '#ffffff', flexShrink: 0, border: '2px solid rgba(29,78,216,0.15)' }}>
-                      {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
+                      {studentDisplayName ? studentDisplayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
                     </div>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', margin: '0 0 2px 0', lineHeight: 1.2, fontFamily: 'system-ui,-apple-system,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {currentUser.name}
+                        {studentDisplayName}
                       </h3>
                       <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 5px 0', fontFamily: 'system-ui,-apple-system,sans-serif', fontWeight: '500' }}>
-                        PRN: <span style={{ fontWeight: '700', color: '#334155' }}>{myData.prn || 'N/A'}</span>
+                        ID: <span style={{ fontWeight: '750', color: '#154388', fontFamily: 'monospace' }}>{myData.system_student_id || currentUser.system_student_id || currentUser.student_id || myData.student_id || myData.prn || 'N/A'}</span>
                         <span style={{ marginLeft: '6px', color: '#ea580c', fontWeight: '800', fontFamily: 'monospace' }}>· {myData.batch_name || 'LAP-01-1026'}</span>
-                        {currentUser.ltc_id && <span style={{ marginLeft: '6px', color: '#ea580c', fontWeight: '700', fontFamily: 'monospace' }}>· {currentUser.ltc_id}</span>}
                       </p>
                     </div>
                     {/* Icon */}
@@ -3357,18 +3113,13 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     <div style={{ zIndex: 2, marginTop: '8px', flex: 1, display:'flex', flexDirection:'column', justifyContent:'center' }}>
-                      <h3 style={{ fontSize:'15px', fontWeight:'800', color:'#0f172a', margin:'0 0 3px 0', lineHeight:1.2, fontFamily:'system-ui,-apple-system,sans-serif' }}>{currentUser.name}</h3>
+                      <h3 style={{ fontSize:'15px', fontWeight:'800', color:'#0f172a', margin:'0 0 3px 0', lineHeight:1.2, fontFamily:'system-ui,-apple-system,sans-serif' }}>{studentDisplayName}</h3>
                       <p style={{ fontSize:'11.5px', color:'#475569', margin:0, fontFamily:'system-ui,-apple-system,sans-serif', fontWeight:'500' }}>
-                        {t("PRN:")} <span style={{ fontWeight:'800', color:'#0f172a' }}>{myData.prn || 'N/A'}</span>
+                        {t("Student ID:")} <span style={{ fontWeight:'800', color:'#154388', fontFamily: 'monospace' }}>{myData.system_student_id || currentUser.system_student_id || currentUser.student_id || myData.student_id || myData.prn || 'N/A'}</span>
                       </p>
                       <p style={{ fontSize:'11px', color:'#334155', fontWeight:'700', margin:'2px 0 0 0', fontFamily:'system-ui,-apple-system,sans-serif' }}>
                         {t("Batch:")} <span style={{ fontFamily:'monospace', color:'#ea580c', fontWeight:'800' }}>{myData.batch_name || 'LAP-01-1026'}</span>
                       </p>
-                      {currentUser.ltc_id && (
-                        <p style={{ fontSize:'11px', color:'#334155', fontWeight:'700', margin:'2px 0 0 0', fontFamily:'system-ui,-apple-system,sans-serif' }}>
-                          {t("LTC ID:")} <span style={{ fontFamily:'monospace', color:'#ea580c' }}>{currentUser.ltc_id}</span>
-                        </p>
-                      )}
                     </div>
                     {myData.squad && myData.squad !== 'Not Assigned Yet' && (
                       <div style={{ zIndex:2, marginTop:'6px' }}>
@@ -3789,55 +3540,6 @@ export default function StudentDashboard() {
                       )}
                     </button>
                   </div>
-
-                  <div style={{ height: '1px', background: '#f1f5f9' }} />
-
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '16px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: '750', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Download My LTC Journey Summary")}</span>
-                      <span style={{ fontSize: '13px', color: '#64748b', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Generate your personalized lifetime achievement journal containing memories, timeline, and growth.")}</span>
-                    </div>
-                    <button
-                      id="download-journey-summary-btn"
-                      onClick={handleDownloadJourneySummary}
-                      disabled={journeyLoading}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        background: journeyLoading ? '#f1f5f9' : '#0f172a',
-                        color: journeyLoading ? '#94a3b8' : '#ffffff',
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '10px',
-                        fontWeight: '700',
-                        fontSize: '13px',
-                        cursor: journeyLoading ? 'not-allowed' : 'pointer',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                        transition: 'all 0.2s ease-in-out',
-                        boxShadow: journeyLoading ? 'none' : '0 4px 12px rgba(15,23,42,0.15)'
-                      }}
-                      onMouseOver={(e) => { 
-                        if (!journeyLoading) {
-                          e.currentTarget.style.background = '#1e293b';
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(15,23,42,0.25)';
-                        } 
-                      }}
-                      onMouseOut={(e) => { 
-                        if (!journeyLoading) {
-                          e.currentTarget.style.background = '#0f172a';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.15)';
-                        }
-                      }}
-                    >
-                      {journeyLoading ? (
-                        <><RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> {t("Generating...")}</>
-                      ) : (
-                        <><Download size={15} /> {t("Download Journey Summary")}</>
-                      )}
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
@@ -3902,7 +3604,7 @@ export default function StudentDashboard() {
             margin: '0 auto 40px auto', 
             background: '#ffffff', 
             borderRadius: isMobile ? '12px' : '16px', 
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06)', 
+            boxShadow: 'none', 
             border: '1px solid #e2e8f0',
             overflow: 'hidden'
           }}>
@@ -3910,7 +3612,7 @@ export default function StudentDashboard() {
             <div style={{ 
               padding: isMobile ? '20px 16px' : '28px 36px', 
               borderBottom: '1px solid #e2e8f0', 
-              background: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)',
+              background: '#ffffff',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
@@ -3950,17 +3652,16 @@ export default function StudentDashboard() {
                    SUBMITTED STATE / RECEIPT VIEW
                    ============================================================== */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {/* Verified Banner */}
+                  {/* Verified Banner (Clean, Flat, Non-Glassmorphic, No One-Sided Border) */}
                   <div style={{ 
                     display: 'flex', 
                     alignItems: 'flex-start', 
                     gap: isMobile ? '12px' : '16px', 
                     padding: isMobile ? '16px' : '18px 22px', 
                     background: '#ffffff', 
-                    border: '1.5px solid #e2e8f0', 
-                    borderLeft: '5px solid #047857', 
+                    border: '1px solid #e2e8f0', 
                     borderRadius: '12px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                    boxShadow: 'none',
                     boxSizing: 'border-box',
                     width: '100%'
                   }}>
@@ -4189,7 +3890,10 @@ export default function StudentDashboard() {
                             placeholder="Student Full Name"
                             required
                             value={undertakingForm.studentName !== undefined ? undertakingForm.studentName : (myData.name || '')}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, studentName: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, studentName: val }));
+                            }}
                             style={{ margin: 0, color: '#0f172a', fontWeight: '600' }}
                           />
                         </div>
@@ -4202,7 +3906,10 @@ export default function StudentDashboard() {
                             className="input-field"
                             placeholder="Student Age (e.g. 14)"
                             value={undertakingForm.studentAge !== undefined ? undertakingForm.studentAge : (myData.age || '')}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, studentAge: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, studentAge: val }));
+                            }}
                             style={{ margin: 0, color: '#0f172a', fontWeight: '600' }}
                           />
                         </div>
@@ -4215,7 +3922,10 @@ export default function StudentDashboard() {
                             className="input-field"
                             placeholder="School Name"
                             value={undertakingForm.studentSchool !== undefined ? undertakingForm.studentSchool : (myData.school || '')}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, studentSchool: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, studentSchool: val }));
+                            }}
                             style={{ margin: 0, color: '#0f172a', fontWeight: '600' }}
                           />
                         </div>
@@ -4228,7 +3938,10 @@ export default function StudentDashboard() {
                             className="input-field"
                             placeholder="Class / Grade (e.g. 9th Grade)"
                             value={undertakingForm.studentClassGrade !== undefined ? undertakingForm.studentClassGrade : (myData.class_grade || '')}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, studentClassGrade: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, studentClassGrade: val }));
+                            }}
                             style={{ margin: 0, color: '#0f172a', fontWeight: '600' }}
                           />
                         </div>
@@ -4275,7 +3988,10 @@ export default function StudentDashboard() {
                             placeholder="Full Name of Parent / Guardian"
                             required
                             value={undertakingForm.parentName}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, parentName: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, parentName: val }));
+                            }}
                             style={{ margin: 0 }}
                           />
                         </div>
@@ -4287,7 +4003,10 @@ export default function StudentDashboard() {
                             className="input-field"
                             required
                             value={undertakingForm.parentRelationship}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, parentRelationship: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, parentRelationship: val }));
+                            }}
                             style={{ margin: 0, cursor: 'pointer' }}
                           >
                             <option value="Father">Father</option>
@@ -4305,7 +4024,10 @@ export default function StudentDashboard() {
                             placeholder="10-digit Mobile Number"
                             required
                             value={undertakingForm.parentMobile}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, parentMobile: e.target.value.replace(/\D/g, '') })}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              setUndertakingForm(prev => ({ ...prev, parentMobile: val }));
+                            }}
                             style={{ margin: 0 }}
                           />
                         </div>
@@ -4319,7 +4041,10 @@ export default function StudentDashboard() {
                             placeholder="parent@example.com"
                             required
                             value={undertakingForm.parentEmail}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, parentEmail: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, parentEmail: val }));
+                            }}
                             style={{ margin: 0 }}
                           />
                         </div>
@@ -4333,7 +4058,10 @@ export default function StudentDashboard() {
                             required
                             rows={2}
                             value={undertakingForm.parentAddress}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, parentAddress: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, parentAddress: val }));
+                            }}
                             style={{ margin: 0, resize: 'vertical' }}
                           />
                         </div>
@@ -4405,8 +4133,11 @@ export default function StudentDashboard() {
                           >
                             <input 
                               type="checkbox"
-                              checked={undertakingForm[item.key]}
-                              onChange={(e) => setUndertakingForm({ ...undertakingForm, [item.key]: e.target.checked })}
+                              checked={Boolean(undertakingForm[item.key])}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setUndertakingForm(prev => ({ ...prev, [item.key]: checked }));
+                              }}
                               style={{ width: '16px', height: '16px', accentColor: '#ea580c', cursor: 'pointer' }}
                             />
                             <span>{item.label}</span>
@@ -4422,8 +4153,11 @@ export default function StudentDashboard() {
                           className="input-field"
                           placeholder="Provide dosage, triggers, special instructions, or medical emergency details..."
                           rows={2}
-                          value={undertakingForm.medDetails}
-                          onChange={(e) => setUndertakingForm({ ...undertakingForm, medDetails: e.target.value })}
+                          value={undertakingForm.medDetails || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setUndertakingForm(prev => ({ ...prev, medDetails: val }));
+                          }}
                           style={{ margin: 0, resize: 'vertical' }}
                         />
                       </div>
@@ -4559,8 +4293,11 @@ export default function StudentDashboard() {
                             className="input-field"
                             placeholder="Type parent/guardian full name..."
                             required
-                            value={undertakingForm.signedName}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, signedName: e.target.value })}
+                            value={undertakingForm.signedName || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, signedName: val }));
+                            }}
                             style={{ margin: 0, fontWeight: '700' }}
                           />
                         </div>
@@ -4572,8 +4309,11 @@ export default function StudentDashboard() {
                             type="date"
                             className="input-field"
                             required
-                            value={undertakingForm.signedDate}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, signedDate: e.target.value })}
+                            value={undertakingForm.signedDate || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUndertakingForm(prev => ({ ...prev, signedDate: val }));
+                            }}
                             style={{ margin: 0 }}
                           />
                         </div>
@@ -4590,8 +4330,11 @@ export default function StudentDashboard() {
                           <input 
                             type="checkbox" 
                             required 
-                            checked={undertakingForm.consentAgreed}
-                            onChange={(e) => setUndertakingForm({ ...undertakingForm, consentAgreed: e.target.checked })}
+                            checked={Boolean(undertakingForm.consentAgreed)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setUndertakingForm(prev => ({ ...prev, consentAgreed: checked }));
+                            }}
                             style={{ marginTop: '3px', accentColor: '#ea580c', width: '18px', height: '18px', flexShrink: 0, cursor: 'pointer' }} 
                           />
                           <span>I, as the parent / legal guardian of the student, declare that all the information provided above is true and complete, and I hereby provide my full consent and undertaking for my child&apos;s participation in the Life Awakening Program. *</span>
@@ -4640,15 +4383,11 @@ export default function StudentDashboard() {
               width: '100%', 
               maxWidth: '1000px', 
               margin: '0 auto', 
-              padding: isMobile ? '20px' : '32px', 
-              background: '#ffffff', 
-              border: '1px solid #e2e8f0', 
-              borderRadius: '24px', 
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.02), 0 8px 16px -6px rgba(0, 0, 0, 0.02)' 
+              padding: isMobile ? '8px 0' : '16px 0' 
             }} 
             className="animate-fade-in"
           >
-            <div style={{ marginBottom: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '8px' }}>
               <div>
                 <h2 style={{ fontSize: '22px', fontWeight: '850', color: '#0f172a', margin: 0, letterSpacing: '-0.5px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                   {t("Items to Carry & Guidelines")}
@@ -4657,6 +4396,35 @@ export default function StudentDashboard() {
                   {t("Official checklist of items to carry, season-wise weather gear, and school student residential guidelines.")}
                 </p>
               </div>
+
+              {/* Download Brochure Button */}
+              <a
+                href="/awakening-brouchre.pdf"
+                download="awakening-brouchre.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#ea580c',
+                  color: '#ffffff',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  textDecoration: 'none',
+                  boxShadow: '0 2px 6px rgba(234, 88, 12, 0.25)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#c2410c'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#ea580c'; }}
+                title="Download Awakening Brochure PDF"
+              >
+                <Download size={15} strokeWidth={2.4} />
+                <span>{t("Download Brochure")}</span>
+              </a>
             </div>
 
             {/* Subtab navigation toggle */}
@@ -4666,7 +4434,7 @@ export default function StudentDashboard() {
               padding: '4px', 
               borderRadius: '12px', 
               border: '1px solid #e2e8f0', 
-              margin: isMobile ? '16px 0 16px 0' : '22px 0 16px 0', 
+              margin: isMobile ? '16px 0 16px 0' : '20px 0 16px 0', 
               gap: '4px',
               width: isMobile ? '100%' : 'auto',
               boxSizing: 'border-box'
@@ -4682,7 +4450,7 @@ export default function StudentDashboard() {
                   color: carrySubTab === 'packing' ? '#0f172a' : '#64748b',
                   fontWeight: '700',
                   fontSize: '13px',
-                  boxShadow: carrySubTab === 'packing' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  boxShadow: carrySubTab === 'packing' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'center'
@@ -4701,7 +4469,7 @@ export default function StudentDashboard() {
                   color: carrySubTab === 'guidelines' ? '#0f172a' : '#64748b',
                   fontWeight: '700',
                   fontSize: '13px',
-                  boxShadow: carrySubTab === 'guidelines' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  boxShadow: carrySubTab === 'guidelines' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'center'
@@ -4713,17 +4481,17 @@ export default function StudentDashboard() {
 
             {carrySubTab === 'packing' ? (
               <>
-                {/* Advisory Top Banner */}
+                {/* Advisory Top Banner (Clean, Flat, Non-Glassmorphic) */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)',
-                  border: '1.5px solid #bfdbfe',
-                  borderRadius: '16px',
-                  padding: isMobile ? '14px 16px' : '18px 20px',
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: isMobile ? '14px 16px' : '16px 20px',
                   marginBottom: '18px',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '14px',
-                  boxShadow: '0 2px 8px rgba(37,99,235,0.04)'
+                  boxShadow: 'none'
                 }}>
                   <div style={{
                     width: '38px',
@@ -4858,17 +4626,17 @@ export default function StudentDashboard() {
                   })}
                 </div>
 
-                {/* Items to Carry Advisory Footer Card */}
+                {/* Items to Carry Advisory Footer Card (Clean, Flat, Non-Glassmorphic) */}
                 <div style={{
-                  background: '#fffbeb',
-                  border: '1.5px solid #fef3c7',
-                  borderRadius: '16px',
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
                   padding: isMobile ? '14px 16px' : '16px 20px',
                   marginTop: '22px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '14px',
-                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.05)'
+                  boxShadow: 'none'
                 }}>
                   <div style={{
                     width: '36px',
@@ -4890,16 +4658,17 @@ export default function StudentDashboard() {
               </>
             ) : (
               <>
-                {/* Guidelines Header Banner */}
+                {/* Guidelines Header Banner (Clean, Flat, Non-Glassmorphic) */}
                 <div style={{
-                  background: '#f8fafc',
-                  border: '1.5px solid #e2e8f0',
-                  borderRadius: '16px',
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
                   padding: isMobile ? '14px 16px' : '16px 20px',
                   marginBottom: '20px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '14px'
+                  gap: '14px',
+                  boxShadow: 'none'
                 }}>
                   <div style={{
                     width: '36px',
@@ -4934,9 +4703,9 @@ export default function StudentDashboard() {
                   <div style={{
                     background: '#ffffff',
                     border: '1px solid #e2e8f0',
-                    borderRadius: '20px',
+                    borderRadius: '16px',
                     padding: isMobile ? '16px' : '24px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.02)'
+                    boxShadow: 'none'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -4960,14 +4729,11 @@ export default function StudentDashboard() {
                             padding: '12px 14px',
                             background: '#ffffff',
                             border: '1px solid #e2e8f0',
-                            borderLeft: '4px solid #10b981',
-                            borderRadius: '12px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
-                            transition: 'all 0.2s ease',
+                            borderRadius: '10px',
+                            boxShadow: 'none',
+                            transition: 'all 0.15s ease',
                             textAlign: 'left'
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(2px)'; e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.borderColor = '#bbf7d0'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.06)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)'; }}
                         >
                           <span style={{ color: '#10b981', fontWeight: '900', fontSize: '12px', marginTop: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', background: '#dcfce7', borderRadius: '50%', flexShrink: 0 }}>
                             <Check size={11} strokeWidth={3} />
@@ -4984,9 +4750,9 @@ export default function StudentDashboard() {
                   <div style={{
                     background: '#ffffff',
                     border: '1px solid #e2e8f0',
-                    borderRadius: '20px',
+                    borderRadius: '16px',
                     padding: isMobile ? '16px' : '24px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.02)'
+                    boxShadow: 'none'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -5010,14 +4776,11 @@ export default function StudentDashboard() {
                             padding: '12px 14px',
                             background: '#ffffff',
                             border: '1px solid #e2e8f0',
-                            borderLeft: '4px solid #ef4444',
-                            borderRadius: '12px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
-                            transition: 'all 0.2s ease',
+                            borderRadius: '10px',
+                            boxShadow: 'none',
+                            transition: 'all 0.15s ease',
                             textAlign: 'left'
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(2px)'; e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#fecaca'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(239,68,68,0.06)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)'; }}
                         >
                           <span style={{ color: '#ef4444', fontWeight: '900', fontSize: '11px', marginTop: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', background: '#fee2e2', borderRadius: '50%', flexShrink: 0 }}>
                             <X size={11} strokeWidth={3} />
@@ -5169,6 +4932,7 @@ export default function StudentDashboard() {
 
               attendance.forEach(rec => {
                 if (rec.pillar && rec.day) {
+                  if (Number(rec.day) > 4) return;
                   if (rec.pillar === 'bag_checking' && Number(rec.day) > 1) return;
                   if (rec.pillar !== 'bag_checking' && Number(rec.day) === 1) return;
                   totalTracked++;
@@ -5183,6 +4947,7 @@ export default function StudentDashboard() {
 
               if (totalTracked === 0) {
                 attendance.forEach(rec => {
+                  if (rec.day && Number(rec.day) > 4) return;
                   totalTracked++;
                   const statusLower = String(rec.status || '').toLowerCase();
                   if (statusLower === 'present' || statusLower === 'late') {
@@ -5193,7 +4958,7 @@ export default function StudentDashboard() {
                 });
               }
 
-              const totalPossible = totalTracked > 0 ? totalTracked : 21;
+              const totalPossible = totalTracked > 0 ? totalTracked : 16;
               const attPercentage = totalPossible > 0 ? Math.round((presentCount / totalPossible) * 100) : 0;
 
               return (
@@ -5222,7 +4987,7 @@ export default function StudentDashboard() {
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
                             <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '800', color: '#475569', borderRight: '1px solid #e2e8f0', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Pillar Name")}</th>
-                            {['D1', 'D2', 'D3', 'D4', 'D5'].map(d => (
+                            {['D1', 'D2', 'D3', 'D4'].map(d => (
                               <th key={d} style={{ padding: '12px 6px', textAlign: 'center', fontWeight: '800', color: '#475569', borderRight: '1px solid #e2e8f0', width: '60px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{d}</th>
                             ))}
                             <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '800', color: '#475569', width: '110px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Attendance")}</th>
@@ -5233,12 +4998,12 @@ export default function StudentDashboard() {
                             const pillarRecords = attendance.filter(r => r.pillar === pillar.key);
                             const presentInPillar = pillarRecords.filter(r => String(r.status || '').toLowerCase() === 'present' || String(r.status || '').toLowerCase() === 'late').length;
 
-                            const totalDaysForPillar = pillar.key === 'bag_checking' ? 1 : 4;
+                            const totalDaysForPillar = pillar.key === 'bag_checking' ? 1 : 3;
 
                             return (
                               <tr key={pillar.key} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
                                 <td style={{ padding: '12px 16px', fontWeight: '700', color: '#334155', borderRight: '1px solid #e2e8f0', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t(pillar.name)}</td>
-                                {[1, 2, 3, 4, 5].map(d => {
+                                {[1, 2, 3, 4].map(d => {
                                   if (pillar.key === 'bag_checking' && d > 1) {
                                     return (
                                       <td 
@@ -5422,10 +5187,8 @@ export default function StudentDashboard() {
         <div 
           className="squad-reveal-overlay" 
           style={{ 
-            backgroundColor: (isMobile && revealStep === 1) ? '#ea580c' : (revealStep === 1 ? '#ea580c' : (revealStep === 2 || revealStep === 3) ? '#000000' : getSquadSplashColor(myData.squad)),
-            backgroundImage: (isMobile && revealStep === 1)
-              ? 'radial-gradient(circle at 50% 50%, rgba(234, 88, 12, 0.6) 0%, rgba(234, 88, 12, 0.25) 45%, #000000 75%)'
-              : (revealStep === 1 ? 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' : 'none'),
+            backgroundColor: revealStep === 1 ? '#ea580c' : ((revealStep === 2 || revealStep === 3) ? '#000000' : getSquadSplashColor(myData.squad)),
+            backgroundImage: revealStep === 1 ? 'none' : 'none',
             overflowY: 'auto',
             padding: revealStep === 3 ? '0' : '20px 0',
             transition: 'background-color 1.4s cubic-bezier(0.4, 0, 0.2, 1), background-image 1.4s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -5516,8 +5279,8 @@ export default function StudentDashboard() {
               
               <h1 className="squad-reveal-title" style={{ whiteSpace: 'nowrap' }}>
                 Welcome, {(() => {
-                  if (!currentUser?.name) return '';
-                  const parts = currentUser.name.trim().split(/\s+/);
+                  if (!studentDisplayName) return '';
+                  const parts = studentDisplayName.trim().split(/\s+/);
                   const salutations = ['mr', 'mr.', 'ms', 'ms.', 'mrs', 'mrs.', 'dr', 'dr.', 'prof', 'prof.'];
                   for (const part of parts) {
                     if (!salutations.includes(part.toLowerCase())) {

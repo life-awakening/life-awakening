@@ -69,13 +69,14 @@ const withLtcId = async (rows) => {
       ltcIdMap[r.student_id] = `${batchNoStr}-${myStr}-${serialStr}`;
     });
 
-    // Lookup parents from parent_students for student records in rows
+    // Lookup parents and missing system_student_ids for student records in rows
     const studentIds = rows
       .map(r => r.id || r.student_id)
       .filter(id => id && Number.isInteger(Number(id)))
       .map(Number);
 
     const parentMap = {};
+    const sysIdMap = {};
     if (studentIds.length > 0) {
       try {
         const psRes = await pool.query(`
@@ -93,8 +94,17 @@ const withLtcId = async (rows) => {
           }
           parentMap[pr.student_id].push(pr);
         }
-      } catch (parentLookupErr) {
-        console.error('[withLtcId ParentLookup Error]', parentLookupErr.message);
+
+        const sysRes = await pool.query(`
+          SELECT id, system_student_id
+          FROM users
+          WHERE id = ANY($1::int[]) AND system_student_id IS NOT NULL
+        `, [studentIds]);
+        for (const sr of sysRes.rows) {
+          sysIdMap[sr.id] = sr.system_student_id;
+        }
+      } catch (lookupErr) {
+        console.error('[withLtcId Lookup Error]', lookupErr.message);
       }
     }
 
@@ -148,13 +158,20 @@ const withLtcId = async (rows) => {
           }))
         : (Array.isArray(r.parents) ? r.parents : []);
 
+      // Resolve official canonical student ID: priority to system_student_id (LAP-BB-MMyy-SS)
+      const canonicalStudentId = r.system_student_id || sysIdMap[sId] || null;
+      const legacyId = sId ? `LA-${String(sId).padStart(5, '0')}` : null;
+      const effectiveStudentId = canonicalStudentId || legacyId;
+
       return {
         ...r,
         email: cleanEmail,
         ...(cleanStudentEmail !== undefined ? { student_email: cleanStudentEmail } : {}),
         internal_email: internalEmail,
-        ltc_id: isRiDirect ? null : (ltcIdMap[sId] || getLtcId(r.prn)),
-        parent1_name: parent1Name,
+        student_id: effectiveStudentId,
+        student_display_id: effectiveStudentId,
+        system_student_id: canonicalStudentId,
+        ltc_id: isRiDirect ? null : (canonicalStudentId || ltcIdMap[sId] || getLtcId(r.prn)),
         parent1_email: parent1Email,
         parent1_phone: parent1Phone,
         parent1_relationship: parent1Rel,

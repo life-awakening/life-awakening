@@ -86,6 +86,10 @@ const initDB = async (passedPool) => {
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS undertaking_submitted BOOLEAN DEFAULT false;");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS undertaking_signed_name VARCHAR(255);");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS undertaking_signed_date VARCHAR(50);");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT false;");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMP;");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS system_student_id VARCHAR(50);");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_system_student_id_idx ON users(system_student_id) WHERE system_student_id IS NOT NULL;");
 
     // Red Flags Detailed Logs Table
     await pool.query(`
@@ -147,7 +151,8 @@ const initDB = async (passedPool) => {
       "ALTER TABLE users ALTER COLUMN panel TYPE VARCHAR(100);",
       "ALTER TABLE users ALTER COLUMN squad TYPE VARCHAR(100);",
       "ALTER TABLE users ALTER COLUMN room TYPE VARCHAR(100);",
-      "ALTER TABLE users ALTER COLUMN status TYPE VARCHAR(100);"
+      "ALTER TABLE users ALTER COLUMN status TYPE VARCHAR(100);",
+      "ALTER TABLE users ALTER COLUMN email DROP NOT NULL;"
     ];
     for (const aq of alterQueries) {
       try { await pool.query(aq); } catch (_) { }
@@ -766,7 +771,14 @@ const initDB = async (passedPool) => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS template_key VARCHAR(100);
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_email_templates_key ON email_templates(template_key) WHERE template_key IS NOT NULL;
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'email_templates_template_key_key'
+        ) THEN
+          ALTER TABLE email_templates ADD CONSTRAINT email_templates_template_key_key UNIQUE (template_key);
+        END IF;
+      END $$;
     `);
 
     const parentTmplCheck = await pool.query("SELECT id FROM email_templates WHERE name = 'Parent Communication'");
@@ -1283,8 +1295,8 @@ const initDB = async (passedPool) => {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         email_1 VARCHAR(255) NOT NULL,
         otp_1_hash VARCHAR(255) NOT NULL,
-        email_2 VARCHAR(255) NOT NULL,
-        otp_2_hash VARCHAR(255) NOT NULL,
+        email_2 VARCHAR(255),
+        otp_2_hash VARCHAR(255),
         otp_1_verified BOOLEAN DEFAULT FALSE,
         otp_2_verified BOOLEAN DEFAULT FALSE,
         attempts_left INTEGER DEFAULT 5,
@@ -1295,6 +1307,8 @@ const initDB = async (passedPool) => {
         used BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE database_reset_otps ALTER COLUMN email_2 DROP NOT NULL;
+      ALTER TABLE database_reset_otps ALTER COLUMN otp_2_hash DROP NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_reset_otps_user ON database_reset_otps(user_id);
       CREATE INDEX IF NOT EXISTS idx_reset_otps_token ON database_reset_otps(reset_session_token_hash);
 

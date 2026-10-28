@@ -2588,9 +2588,9 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
     const facultyMembers = facultyRes.rows.filter(f => f.role === 'faculty');
     const ltcCoordinators = facultyRes.rows.filter(f => f.role === 'ltc_member');
 
-    // 4. Fetch Day-Wise Squad Attendance Matrix (Days 1 to 5)
+    // 4. Fetch Day-Wise Squad Attendance Matrix (Days 1 to 4)
     const daysRes = await pool.query(
-      `SELECT DISTINCT day FROM attendance WHERE batch_id = $1 AND day IS NOT NULL ORDER BY day ASC`,
+      `SELECT DISTINCT day FROM attendance WHERE batch_id = $1 AND day IS NOT NULL AND day <= 4 ORDER BY day ASC`,
       [batchId]
     );
     const recordedDaysSet = new Set(daysRes.rows.map(r => parseInt(r.day, 10)));
@@ -2603,8 +2603,7 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
         COUNT(DISTINCT CASE WHEN a.day = 1 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day1_present,
         COUNT(DISTINCT CASE WHEN a.day = 2 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day2_present,
         COUNT(DISTINCT CASE WHEN a.day = 3 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day3_present,
-        COUNT(DISTINCT CASE WHEN a.day = 4 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day4_present,
-        COUNT(DISTINCT CASE WHEN a.day = 5 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day5_present
+        COUNT(DISTINCT CASE WHEN a.day = 4 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day4_present
       FROM batch_students bs
       LEFT JOIN attendance a ON a.student_id = bs.student_id AND a.batch_id = bs.batch_id
       WHERE bs.batch_id = $1
@@ -2620,7 +2619,7 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
       let totalPresentDays = 0;
       let totalPossibleDays = 0;
 
-      for (let d = 1; d <= 5; d++) {
+      for (let d = 1; d <= 4; d++) {
         const isRec = recordedDaysSet.has(d);
         const present = parseInt(r[`day${d}_present`], 10) || 0;
         const absent = isRec ? Math.max(0, tot - present) : 0;
@@ -2660,7 +2659,6 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
           day2: { attended: 0, not_attended: 0, pct: 100, is_recorded: false },
           day3: { attended: 0, not_attended: 0, pct: 100, is_recorded: false },
           day4: { attended: 0, not_attended: 0, pct: 100, is_recorded: false },
-          day5: { attended: 0, not_attended: 0, pct: 100, is_recorded: false },
           avgPct: 100
         });
       }
@@ -2681,7 +2679,7 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
     let grandPossible = 0;
     const dailyTrendPercentages = [];
 
-    for (let d = 1; d <= 5; d++) {
+    for (let d = 1; d <= 4; d++) {
       const isRec = recordedDaysSet.has(d);
       const totalAttended = squadAttendanceMatrix.reduce((acc, s) => acc + s[`day${d}`].attended, 0);
       const totalNotAttended = isRec ? Math.max(0, matrixTotals.total_students - totalAttended) : 0;
@@ -3544,20 +3542,19 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
     <div class="card" style="margin-bottom:8px;">
       <div class="card-title">
         <span>Official 10-Squad Day-by-Day Attendance Record</span>
-        <span class="tag">5-Day Register</span>
+        <span class="tag">4-Day Register</span>
       </div>
       <table class="compact-table">
         <thead>
           <tr>
-            <th class="left" style="width:18%;">Squad Name</th>
-            <th style="width:8%;">Total</th>
-            <th style="width:7%;">DNR</th>
-            <th style="width:12%;">Day 1</th>
-            <th style="width:12%;">Day 2</th>
-            <th style="width:12%;">Day 3</th>
-            <th style="width:12%;">Day 4</th>
-            <th style="width:12%;">Day 5</th>
-            <th style="width:10%;">Squad Avg</th>
+            <th class="left" style="width:22%;">Squad Name</th>
+            <th style="width:9%;">Total</th>
+            <th style="width:8%;">DNR</th>
+            <th style="width:13%;">Day 1</th>
+            <th style="width:13%;">Day 2</th>
+            <th style="width:13%;">Day 3</th>
+            <th style="width:13%;">Day 4</th>
+            <th style="width:9%;">Squad Avg</th>
           </tr>
         </thead>
         <tbody>
@@ -3570,7 +3567,6 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
               <td>${sq.day2.is_recorded ? `${sq.day2.attended} <span style="font-size:7.5px;color:#64748b;">(${sq.day2.pct}%)</span>` : '—'}</td>
               <td>${sq.day3.is_recorded ? `${sq.day3.attended} <span style="font-size:7.5px;color:#64748b;">(${sq.day3.pct}%)</span>` : '—'}</td>
               <td>${sq.day4.is_recorded ? `${sq.day4.attended} <span style="font-size:7.5px;color:#64748b;">(${sq.day4.pct}%)</span>` : '—'}</td>
-              <td>${sq.day5.is_recorded ? `${sq.day5.attended} <span style="font-size:7.5px;color:#64748b;">(${sq.day5.pct}%)</span>` : '—'}</td>
               <td>
                 <span class="badge-pct ${sq.avgPct >= 90 ? 'badge-green' : sq.avgPct >= 75 ? 'badge-amber' : 'badge-red'}">
                   ${sq.avgPct}%
@@ -3586,7 +3582,6 @@ const _legacy_getBatchOverallSummaryPdf = async (req, res) => {
             <td><strong>${matrixTotals.day2.is_recorded ? `${matrixTotals.day2.attended} (${matrixTotals.day2.pct}%)` : '—'}</strong></td>
             <td><strong>${matrixTotals.day3.is_recorded ? `${matrixTotals.day3.attended} (${matrixTotals.day3.pct}%)` : '—'}</strong></td>
             <td><strong>${matrixTotals.day4.is_recorded ? `${matrixTotals.day4.attended} (${matrixTotals.day4.pct}%)` : '—'}</strong></td>
-            <td><strong>${matrixTotals.day5.is_recorded ? `${matrixTotals.day5.attended} (${matrixTotals.day5.pct}%)` : '—'}</strong></td>
             <td><span class="badge-pct badge-green">${overallBatchAttendancePct}%</span></td>
           </tr>
         </tbody>

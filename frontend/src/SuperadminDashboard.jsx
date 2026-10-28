@@ -1089,11 +1089,11 @@ export default function SuperadminDashboard() {
                       <div style={{ fontWeight: '700', fontSize: '13.5px', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         Reset Application Database
                         <span style={{ fontSize: '11px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
-                          ⚡ Dual-OTP Temporarily Bypassed
+                          🔒 Security OTP Protected
                         </span>
                       </div>
                       <div style={{ fontSize: '12px', color: '#b91c1c', marginTop: '2px', lineHeight: 1.4 }}>
-                        Dual-party security OTP verification is temporarily bypassed for Super Admin.
+                        Requires single-use security verification code dispatched to authorized administrator.
                       </div>
                     </div>
                     <button

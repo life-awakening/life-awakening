@@ -1543,7 +1543,14 @@ const getBatchReport = async (req, res) => {
     }
 
     if (!batch) {
-      return res.status(404).json({ message: 'Batch not found.' });
+      return res.json({
+        success: true,
+        batch: null,
+        report: null,
+        students: [],
+        faculty: [],
+        message: 'No batch present.'
+      });
     }
 
     // 2. Fetch enrolled students with room assignments
@@ -2995,7 +3002,7 @@ const generateLtcTemplatePdf = async (req, res) => {
     let attendanceSummary = null;
     try {
       const daysRes = await pool.query(
-        "SELECT DISTINCT day FROM attendance WHERE batch_id = $1 AND day IS NOT NULL ORDER BY day ASC",
+        "SELECT DISTINCT day FROM attendance WHERE batch_id = $1 AND day IS NOT NULL AND day <= 4 ORDER BY day ASC",
         [batchId]
       );
       const recordedDaysSet = new Set(daysRes.rows.map(r => parseInt(r.day, 10)));
@@ -3011,8 +3018,7 @@ const generateLtcTemplatePdf = async (req, res) => {
           COUNT(DISTINCT CASE WHEN a.day = 1 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day1_present,
           COUNT(DISTINCT CASE WHEN a.day = 2 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day2_present,
           COUNT(DISTINCT CASE WHEN a.day = 3 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day3_present,
-          COUNT(DISTINCT CASE WHEN a.day = 4 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day4_present,
-          COUNT(DISTINCT CASE WHEN a.day = 5 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day5_present
+          COUNT(DISTINCT CASE WHEN a.day = 4 AND LOWER(a.status) IN ('present', 'late') AND bs.is_dnr = false THEN a.student_id END)::int as day4_present
         FROM batch_students bs
         LEFT JOIN attendance a ON a.student_id = bs.student_id AND a.batch_id = bs.batch_id
         WHERE bs.batch_id = $1
@@ -3056,7 +3062,7 @@ const generateLtcTemplatePdf = async (req, res) => {
         const dayData = {};
         let totalPresent = 0;
         let totalPossible = 0;
-        for (let d = 1; d <= 5; d++) {
+        for (let d = 1; d <= 4; d++) {
           const isRec = recordedDaysSet.has(d);
           const pres = isRec ? (parseInt(r[`day${d}_present`], 10) || 0) : (tot > 0 ? active : 0);
           const abs = isRec ? Math.max(0, active - pres) : 0;
@@ -3079,11 +3085,11 @@ const generateLtcTemplatePdf = async (req, res) => {
 
       const CORE_ACTIVITIES = [
         { key: 'orientation', name: 'Orientation & Fall-in', validDays: [1] },
-        { key: 'agriculture', name: 'Agriculture & Nature', validDays: [2, 3, 4, 5] },
-        { key: 'physical', name: 'Physical Fitness & Sports', validDays: [2, 3, 4, 5] },
-        { key: 'leadership', name: 'Team Building & Leadership', validDays: [2, 3, 4, 5] },
-        { key: 'patriotism', name: 'Patriotism & Nation Building', validDays: [2, 3, 4, 5] },
-        { key: 'spirituality', name: 'Spirituality & Inner Peace', validDays: [2, 3, 4, 5] }
+        { key: 'agriculture', name: 'Agriculture & Nature', validDays: [2, 3, 4] },
+        { key: 'physical', name: 'Physical Fitness & Sports', validDays: [2, 3, 4] },
+        { key: 'leadership', name: 'Team Building & Leadership', validDays: [2, 3, 4] },
+        { key: 'patriotism', name: 'Patriotism & Nation Building', validDays: [2, 3, 4] },
+        { key: 'spirituality', name: 'Spirituality & Inner Peace', validDays: [2, 3, 4] }
       ];
 
       const actQuery = `
@@ -3116,7 +3122,7 @@ const generateLtcTemplatePdf = async (req, res) => {
 
       const activities = CORE_ACTIVITIES.map(act => {
         const dayData = {};
-        for (let d = 1; d <= 5; d++) {
+        for (let d = 1; d <= 4; d++) {
           const isValid = act.validDays.includes(d);
           const isRec = recordedDaysSet.has(d);
           const att = isRec && (isValid || actAttendanceMap[`${act.key}_${d}`] !== undefined)
@@ -3156,7 +3162,7 @@ const generateLtcTemplatePdf = async (req, res) => {
         total_students: totalBatchStudents,
         dnr_count: totalDnr
       };
-      for (let d = 1; d <= 5; d++) {
+      for (let d = 1; d <= 4; d++) {
         const isRecorded = recordedDaysSet.has(d);
         const totalAttended = isRecorded
           ? (dayTotalsMap[d] !== undefined ? dayTotalsMap[d] : totalBatchStudents)

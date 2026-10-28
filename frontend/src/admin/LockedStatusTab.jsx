@@ -1120,25 +1120,25 @@ export default function LockedStatusTab({ token, apiBase, showToast, batches = [
                   Orientation<br />
                   <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 1</span>
                 </th>
-                <th colSpan={4} style={{ background: '#f0fdf4', color: '#166534' }}>
+                <th colSpan={3} style={{ background: '#f0fdf4', color: '#166534' }}>
                   Agriculture & Nature<br />
-                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4 · Day 5</span>
+                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4</span>
                 </th>
-                <th colSpan={4} style={{ background: '#fef3c7', color: '#92400e' }}>
+                <th colSpan={3} style={{ background: '#fef3c7', color: '#92400e' }}>
                   Physical Fitness & Sports<br />
-                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4 · Day 5</span>
+                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4</span>
                 </th>
-                <th colSpan={4} style={{ background: '#f5f3ff', color: '#5b21b6' }}>
+                <th colSpan={3} style={{ background: '#f5f3ff', color: '#5b21b6' }}>
                   Team Building & Leadership<br />
-                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4 · Day 5</span>
+                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4</span>
                 </th>
-                <th colSpan={4} style={{ background: '#fff1f2', color: '#9f1239' }}>
+                <th colSpan={3} style={{ background: '#fff1f2', color: '#9f1239' }}>
                   Patriotism & Nation Building<br />
-                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4 · Day 5</span>
+                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4</span>
                 </th>
-                <th colSpan={4} style={{ background: '#ecfeff', color: '#155e75' }}>
+                <th colSpan={3} style={{ background: '#ecfeff', color: '#155e75' }}>
                   Spirituality & Peace<br />
-                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4 · Day 5</span>
+                  <span style={{ fontSize: '8.5px', fontWeight: '600' }}>Day 2 · Day 3 · Day 4</span>
                 </th>
                 <th style={{ minWidth: '90px', background: '#f8fafc' }}>
                   Progress
@@ -1148,11 +1148,11 @@ export default function LockedStatusTab({ token, apiBase, showToast, batches = [
                 <th style={{ position: 'sticky', left: 0, zIndex: 10, background: '#f1f5f9' }}></th>
                 <th></th>
                 <th>D1</th>
-                <th>D2</th><th>D3</th><th>D4</th><th>D5</th>
-                <th>D2</th><th>D3</th><th>D4</th><th>D5</th>
-                <th>D2</th><th>D3</th><th>D4</th><th>D5</th>
-                <th>D2</th><th>D3</th><th>D4</th><th>D5</th>
-                <th>D2</th><th>D3</th><th>D4</th><th>D5</th>
+                <th>D2</th><th>D3</th><th>D4</th>
+                <th>D2</th><th>D3</th><th>D4</th>
+                <th>D2</th><th>D3</th><th>D4</th>
+                <th>D2</th><th>D3</th><th>D4</th>
+                <th>D2</th><th>D3</th><th>D4</th>
                 <th>Total %</th>
               </tr>
             </thead>
@@ -1181,35 +1181,30 @@ export default function LockedStatusTab({ token, apiBase, showToast, batches = [
                     {renderCellStatus(sq.pillarStatuses?.bag_checking?.days?.day_1, sq.squadName, 'bag_checking', 'Orientation', 1)}
                   </td>
 
-                  {/* Agriculture & Nature (Days 2,3,4,5) */}
+                  {/* Agriculture & Nature (Days 2,3,4) */}
                   <td>{renderCellStatus(sq.pillarStatuses?.agriculture?.days?.day_2, sq.squadName, 'agriculture', 'Agriculture & Nature', 2)}</td>
                   <td>{renderCellStatus(sq.pillarStatuses?.agriculture?.days?.day_3, sq.squadName, 'agriculture', 'Agriculture & Nature', 3)}</td>
-                  <td>{renderCellStatus(sq.pillarStatuses?.agriculture?.days?.day_4, sq.squadName, 'agriculture', 'Agriculture & Nature', 4)}</td>
-                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.agriculture?.days?.day_5, sq.squadName, 'agriculture', 'Agriculture & Nature', 5)}</td>
+                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.agriculture?.days?.day_4, sq.squadName, 'agriculture', 'Agriculture & Nature', 4)}</td>
 
-                  {/* Physical Fitness & Sports (Days 2,3,4,5) */}
+                  {/* Physical Fitness & Sports (Days 2,3,4) */}
                   <td>{renderCellStatus(sq.pillarStatuses?.physical?.days?.day_2, sq.squadName, 'physical', 'Physical Fitness & Sports', 2)}</td>
                   <td>{renderCellStatus(sq.pillarStatuses?.physical?.days?.day_3, sq.squadName, 'physical', 'Physical Fitness & Sports', 3)}</td>
-                  <td>{renderCellStatus(sq.pillarStatuses?.physical?.days?.day_4, sq.squadName, 'physical', 'Physical Fitness & Sports', 4)}</td>
-                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.physical?.days?.day_5, sq.squadName, 'physical', 'Physical Fitness & Sports', 5)}</td>
+                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.physical?.days?.day_4, sq.squadName, 'physical', 'Physical Fitness & Sports', 4)}</td>
 
-                  {/* Team Building & Leadership (Days 2,3,4,5) */}
+                  {/* Team Building & Leadership (Days 2,3,4) */}
                   <td>{renderCellStatus(sq.pillarStatuses?.leadership?.days?.day_2, sq.squadName, 'leadership', 'Team Building & Leadership', 2)}</td>
                   <td>{renderCellStatus(sq.pillarStatuses?.leadership?.days?.day_3, sq.squadName, 'leadership', 'Team Building & Leadership', 3)}</td>
-                  <td>{renderCellStatus(sq.pillarStatuses?.leadership?.days?.day_4, sq.squadName, 'leadership', 'Team Building & Leadership', 4)}</td>
-                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.leadership?.days?.day_5, sq.squadName, 'leadership', 'Team Building & Leadership', 5)}</td>
+                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.leadership?.days?.day_4, sq.squadName, 'leadership', 'Team Building & Leadership', 4)}</td>
 
-                  {/* Patriotism & Nation Building (Days 2,3,4,5) */}
+                  {/* Patriotism & Nation Building (Days 2,3,4) */}
                   <td>{renderCellStatus(sq.pillarStatuses?.patriotism?.days?.day_2, sq.squadName, 'patriotism', 'Patriotism & Nation Building', 2)}</td>
                   <td>{renderCellStatus(sq.pillarStatuses?.patriotism?.days?.day_3, sq.squadName, 'patriotism', 'Patriotism & Nation Building', 3)}</td>
-                  <td>{renderCellStatus(sq.pillarStatuses?.patriotism?.days?.day_4, sq.squadName, 'patriotism', 'Patriotism & Nation Building', 4)}</td>
-                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.patriotism?.days?.day_5, sq.squadName, 'patriotism', 'Patriotism & Nation Building', 5)}</td>
+                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.patriotism?.days?.day_4, sq.squadName, 'patriotism', 'Patriotism & Nation Building', 4)}</td>
 
-                  {/* Spirituality & Peace (Days 2,3,4,5) */}
+                  {/* Spirituality & Peace (Days 2,3,4) */}
                   <td>{renderCellStatus(sq.pillarStatuses?.spirituality?.days?.day_2, sq.squadName, 'spirituality', 'Spirituality & Peace', 2)}</td>
                   <td>{renderCellStatus(sq.pillarStatuses?.spirituality?.days?.day_3, sq.squadName, 'spirituality', 'Spirituality & Peace', 3)}</td>
-                  <td>{renderCellStatus(sq.pillarStatuses?.spirituality?.days?.day_4, sq.squadName, 'spirituality', 'Spirituality & Peace', 4)}</td>
-                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.spirituality?.days?.day_5, sq.squadName, 'spirituality', 'Spirituality & Peace', 5)}</td>
+                  <td style={{ borderRight: '1.5px solid #cbd5e1' }}>{renderCellStatus(sq.pillarStatuses?.spirituality?.days?.day_4, sq.squadName, 'spirituality', 'Spirituality & Peace', 4)}</td>
 
                   {/* Overall Locked Progress */}
                   <td style={{ textAlign: 'center' }}>
@@ -1287,7 +1282,6 @@ export default function LockedStatusTab({ token, apiBase, showToast, batches = [
                       <th style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '800', width: '80px' }}>Day 2</th>
                       <th style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '800', width: '80px' }}>Day 3</th>
                       <th style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '800', width: '80px' }}>Day 4</th>
-                      <th style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '800', width: '80px' }}>Day 5</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1298,7 +1292,7 @@ export default function LockedStatusTab({ token, apiBase, showToast, batches = [
                           <td style={{ padding: '6px 10px', fontWeight: '750', color: '#0f172a', whiteSpace: 'nowrap' }}>
                             {pillar.name}
                           </td>
-                          {[1, 2, 3, 4, 5].map(d => {
+                          {[1, 2, 3, 4].map(d => {
                             if (isOrientation && d > 1) {
                               return (
                                 <td key={d} style={{ padding: '4px', textAlign: 'center', color: '#cbd5e1' }}>

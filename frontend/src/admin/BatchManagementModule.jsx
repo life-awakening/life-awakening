@@ -71,27 +71,22 @@ const ADMIN_PILLAR_COLUMNS = [
   { header: 'Agriculture & Nature - Day 2', pillarKeys: ['agriculture', 'agriculture & nature'], day: 2 },
   { header: 'Agriculture & Nature - Day 3', pillarKeys: ['agriculture', 'agriculture & nature'], day: 3 },
   { header: 'Agriculture & Nature - Day 4', pillarKeys: ['agriculture', 'agriculture & nature'], day: 4 },
-  { header: 'Agriculture & Nature - Day 5', pillarKeys: ['agriculture', 'agriculture & nature'], day: 5 },
 
   { header: 'Physical Fitness & Sports - Day 2', pillarKeys: ['physical', 'fitness', 'sports', 'physical fitness & sports'], day: 2 },
   { header: 'Physical Fitness & Sports - Day 3', pillarKeys: ['physical', 'fitness', 'sports', 'physical fitness & sports'], day: 3 },
   { header: 'Physical Fitness & Sports - Day 4', pillarKeys: ['physical', 'fitness', 'sports', 'physical fitness & sports'], day: 4 },
-  { header: 'Physical Fitness & Sports - Day 5', pillarKeys: ['physical', 'fitness', 'sports', 'physical fitness & sports'], day: 5 },
 
   { header: 'Team Building & Leadership - Day 2', pillarKeys: ['leadership', 'team building', 'team building & leadership'], day: 2 },
   { header: 'Team Building & Leadership - Day 3', pillarKeys: ['leadership', 'team building', 'team building & leadership'], day: 3 },
   { header: 'Team Building & Leadership - Day 4', pillarKeys: ['leadership', 'team building', 'team building & leadership'], day: 4 },
-  { header: 'Team Building & Leadership - Day 5', pillarKeys: ['leadership', 'team building', 'team building & leadership'], day: 5 },
 
   { header: 'Patriotism & Nation Building - Day 2', pillarKeys: ['patriotism', 'nation building', 'patriotism & nation building'], day: 2 },
   { header: 'Patriotism & Nation Building - Day 3', pillarKeys: ['patriotism', 'nation building', 'patriotism & nation building'], day: 3 },
   { header: 'Patriotism & Nation Building - Day 4', pillarKeys: ['patriotism', 'nation building', 'patriotism & nation building'], day: 4 },
-  { header: 'Patriotism & Nation Building - Day 5', pillarKeys: ['patriotism', 'nation building', 'patriotism & nation building'], day: 5 },
 
   { header: 'Spirituality & Inner Peace - Day 2', pillarKeys: ['spirituality', 'inner peace', 'spirituality & peace', 'spirituality & inner peace'], day: 2 },
   { header: 'Spirituality & Inner Peace - Day 3', pillarKeys: ['spirituality', 'inner peace', 'spirituality & peace', 'spirituality & inner peace'], day: 3 },
-  { header: 'Spirituality & Inner Peace - Day 4', pillarKeys: ['spirituality', 'inner peace', 'spirituality & peace', 'spirituality & inner peace'], day: 4 },
-  { header: 'Spirituality & Inner Peace - Day 5', pillarKeys: ['spirituality', 'inner peace', 'spirituality & peace', 'spirituality & inner peace'], day: 5 }
+  { header: 'Spirituality & Inner Peace - Day 4', pillarKeys: ['spirituality', 'inner peace', 'spirituality & peace', 'spirituality & inner peace'], day: 4 }
 ]
 
 function buildAdminAttendanceExportRows(studentsList, recordsList, schedulesList = []) {
@@ -196,7 +191,8 @@ function buildAdminAttendanceExportRows(studentsList, recordsList, schedulesList
     }
 
     return {
-      'PRN / LTC ID': st.prn || '—',
+      'Student ID': st.system_student_id || st.student_id || st.student_display_id || st.prn || '—',
+      'PRN / LTC ID': st.system_student_id || st.student_id || st.student_display_id || st.prn || '—',
       'Student Name': st.name || '—',
       'Squad': st.squad || 'Unassigned',
       'Panel': formattedPanel,
@@ -1277,7 +1273,7 @@ function BatchStudentsTab({ batchId, batchName, token, toast, onRefresh }) {
                     {/* Student ID */}
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       <span style={{ fontFamily: 'monospace', fontWeight: '750', fontSize: '12px', color: '#154388', background: '#f0f7ff', border: '1px solid #bfdbfe', padding: '2px 7px', borderRadius: '5px' }}>
-                        {s.student_id || `LA-${String(s.id).padStart(5, '0')}`}
+                        {s.system_student_id || s.student_id || s.student_display_id || `LA-${String(s.id).padStart(5, '0')}`}
                       </span>
                     </td>
 
@@ -3085,6 +3081,7 @@ function SquadAllocationTab({ batchId, batchName, token, toast }) {
 
     const exportData = sorted.map((s, index) => ({
       'S.No': index + 1,
+      'Student ID': s.system_student_id || s.student_id || s.student_display_id || s.prn || '—',
       'Room': s.room || 'Unassigned',
       'Student Name': s.name || '—',
       'PRN': s.prn || '—',
@@ -3410,103 +3407,120 @@ function SquadAllocationTab({ batchId, batchName, token, toast }) {
       </div>
 
       <div className="squads-grid">
-        {SQUAD_NAMES.map(sq => (
-          <div key={sq} className={`squad-card ${selectedSquad === sq ? 'selected' : ''}`}
-            style={{ '--squad-color': SQUAD_COLORS[sq] || 'var(--primary)' }}
-            onClick={() => setSelectedSquad(sq)}>
-            <div className="squad-card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="squad-badge">{sq.substring(0, 2)}</div>
-                <div className="squad-card-title">{sq}</div>
+        {SQUAD_NAMES.map(sq => {
+          const studentCount = squadStats[sq]?.students || 0
+          const isEmpty = studentCount === 0
+          return (
+            <div 
+              key={sq} 
+              className={`squad-card ${selectedSquad === sq ? 'selected' : ''} ${isEmpty ? 'squad-card--empty' : ''}`}
+              style={{ '--squad-color': SQUAD_COLORS[sq] || 'var(--primary)' }}
+              onClick={() => setSelectedSquad(sq)}
+            >
+              <div className="squad-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="squad-badge">{sq.substring(0, 2)}</div>
+                  <div className="squad-card-title">{sq}</div>
+                </div>
+                <button style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}>
+                  <MoreHorizontal size={16} />
+                </button>
               </div>
-              <button style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}>
-                <MoreHorizontal size={16} />
-              </button>
+              <div className="squad-stats-row">
+                <div className="squad-stat-item">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                    <span className="squad-stat-value">{studentCount}</span>
+                    <span className="squad-stat-label" style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Students</span>
+                  </div>
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    background: `${SQUAD_COLORS[sq]}12` || 'rgba(37, 99, 235, 0.08)',
+                    color: SQUAD_COLORS[sq] || '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Users size={14} />
+                  </div>
+                </div>
+                <div className="squad-stat-item">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left', minWidth: 0 }}>
+                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', lineHeight: 1.2, display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      <span style={{ color: '#16a34a' }}>MIT {squadStats[sq]?.normalFaculty || 0}</span>
+                      <span style={{ color: '#94a3b8' }}>·</span>
+                      <span style={{ color: '#7c3aed' }}>LTC {squadStats[sq]?.ltcFaculty || 0}</span>
+                    </span>
+                    <span className="squad-stat-label" style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>Faculty</span>
+                  </div>
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    background: `${SQUAD_COLORS[sq]}12` || 'rgba(37, 99, 235, 0.08)',
+                    color: SQUAD_COLORS[sq] || '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <GraduationCap size={14} />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="squad-stats-row">
-              <div className="squad-stat-item">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                  <span className="squad-stat-value">{squadStats[sq]?.students || 0}</span>
-                  <span className="squad-stat-label" style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Students</span>
-                </div>
-                <div style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '50%',
-                  background: `${SQUAD_COLORS[sq]}12` || 'rgba(37, 99, 235, 0.08)',
-                  color: SQUAD_COLORS[sq] || '#2563eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <Users size={14} />
-                </div>
-              </div>
-              <div className="squad-stat-item">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left', minWidth: 0 }}>
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', lineHeight: 1.2, display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    <span style={{ color: '#16a34a' }}>MIT {squadStats[sq]?.normalFaculty || 0}</span>
-                    <span style={{ color: '#94a3b8' }}>·</span>
-                    <span style={{ color: '#7c3aed' }}>LTC {squadStats[sq]?.ltcFaculty || 0}</span>
-                  </span>
-                  <span className="squad-stat-label" style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>Faculty</span>
-                </div>
-                <div style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '50%',
-                  background: `${SQUAD_COLORS[sq]}12` || 'rgba(37, 99, 235, 0.08)',
-                  color: SQUAD_COLORS[sq] || '#2563eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <GraduationCap size={14} />
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+          )
+        })}
         {/* MIT Spare card */}
-        <div className={`squad-card ${selectedSquad === 'MIT Spare' ? 'selected' : ''}`}
-          style={{ '--squad-color': '#16a34a' }}
-          onClick={() => setSelectedSquad('MIT Spare')}>
-          <div className="squad-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div className="squad-badge" style={{ background: '#16a34a', fontSize: 10 }}>MIT</div>
-              <div className="squad-card-title">MIT Spare</div>
+        {(() => {
+          const mitSpareStudentsCount = data.students.filter(s => !s.squad || s.squad === 'Spare').length
+          const isMitSpareEmpty = mitSpareStudentsCount === 0
+          return (
+            <div 
+              className={`squad-card ${selectedSquad === 'MIT Spare' ? 'selected' : ''} ${isMitSpareEmpty ? 'squad-card--empty' : ''}`}
+              style={{ '--squad-color': '#16a34a' }}
+              onClick={() => setSelectedSquad('MIT Spare')}
+            >
+              <div className="squad-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="squad-badge" style={{ background: '#16a34a', fontSize: 10 }}>MIT</div>
+                  <div className="squad-card-title">MIT Spare</div>
+                </div>
+                <button style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}>
+                  <MoreHorizontal size={16} />
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', marginTop: 'auto' }}>
+                <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', padding: '10px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: isMitSpareEmpty ? '#64748b' : '#16a34a', lineHeight: 1.1 }}>{mitSpareStudentsCount}</span>
+                    <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '600' }}>Students</span>
+                  </div>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#16a34a12', color: '#16a34a', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Users size={12} />
+                  </div>
+                </div>
+                <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', padding: '10px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: '#16a34a', lineHeight: 1.1 }}>{mitSpareCount}</span>
+                    <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '600' }}>Faculty</span>
+                  </div>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#16a34a12', color: '#16a34a', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <GraduationCap size={12} />
+                  </div>
+                </div>
+              </div>
             </div>
-            <button style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}>
-              <MoreHorizontal size={16} />
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', marginTop: 'auto' }}>
-            <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', padding: '10px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                <span style={{ fontSize: '18px', fontWeight: '800', color: '#16a34a', lineHeight: 1.1 }}>{data.students.filter(s => !s.squad || s.squad === 'Spare').length}</span>
-                <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '600' }}>Students</span>
-              </div>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#16a34a12', color: '#16a34a', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Users size={12} />
-              </div>
-            </div>
-            <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', padding: '10px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                <span style={{ fontSize: '18px', fontWeight: '800', color: '#16a34a', lineHeight: 1.1 }}>{mitSpareCount}</span>
-                <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '600' }}>Faculty</span>
-              </div>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#16a34a12', color: '#16a34a', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <GraduationCap size={12} />
-              </div>
-            </div>
-          </div>
-        </div>
+          )
+        })()}
         {/* LTC Spare card */}
-        <div className={`squad-card ${selectedSquad === 'LTC Spare' ? 'selected' : ''}`}
+        <div 
+          className={`squad-card ${selectedSquad === 'LTC Spare' ? 'selected' : ''} squad-card--empty`}
           style={{ '--squad-color': '#7c3aed' }}
-          onClick={() => setSelectedSquad('LTC Spare')}>
+          onClick={() => setSelectedSquad('LTC Spare')}
+        >
           <div className="squad-card-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div className="squad-badge" style={{ background: '#7c3aed', fontSize: 10 }}>LTC</div>
@@ -3519,7 +3533,7 @@ function SquadAllocationTab({ batchId, batchName, token, toast }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', marginTop: 'auto' }}>
             <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', padding: '10px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                <span style={{ fontSize: '18px', fontWeight: '800', color: '#7c3aed', lineHeight: 1.1 }}>—</span>
+                <span style={{ fontSize: '18px', fontWeight: '800', color: '#64748b', lineHeight: 1.1 }}>0</span>
                 <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '600' }}>Students</span>
               </div>
               <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#7c3aed12', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -4813,31 +4827,26 @@ function BatchAttendanceTab({ batchId, token, toast }) {
               <option value="pillar:agriculture:2">Agriculture & Nature - Day 2</option>
               <option value="pillar:agriculture:3">Agriculture & Nature - Day 3</option>
               <option value="pillar:agriculture:4">Agriculture & Nature - Day 4</option>
-              <option value="pillar:agriculture:5">Agriculture & Nature - Day 5</option>
             </optgroup>
             <optgroup label="Physical Fitness & Sports">
               <option value="pillar:physical:2">Physical Fitness & Sports - Day 2</option>
               <option value="pillar:physical:3">Physical Fitness & Sports - Day 3</option>
               <option value="pillar:physical:4">Physical Fitness & Sports - Day 4</option>
-              <option value="pillar:physical:5">Physical Fitness & Sports - Day 5</option>
             </optgroup>
             <optgroup label="Team Building & Leadership">
               <option value="pillar:leadership:2">Team Building & Leadership - Day 2</option>
               <option value="pillar:leadership:3">Team Building & Leadership - Day 3</option>
               <option value="pillar:leadership:4">Team Building & Leadership - Day 4</option>
-              <option value="pillar:leadership:5">Team Building & Leadership - Day 5</option>
             </optgroup>
             <optgroup label="Patriotism & Nation Building">
               <option value="pillar:patriotism:2">Patriotism & Nation Building - Day 2</option>
               <option value="pillar:patriotism:3">Patriotism & Nation Building - Day 3</option>
               <option value="pillar:patriotism:4">Patriotism & Nation Building - Day 4</option>
-              <option value="pillar:patriotism:5">Patriotism & Nation Building - Day 5</option>
             </optgroup>
             <optgroup label="Spirituality & Peace">
               <option value="pillar:spirituality:2">Spirituality & Peace - Day 2</option>
               <option value="pillar:spirituality:3">Spirituality & Peace - Day 3</option>
               <option value="pillar:spirituality:4">Spirituality & Peace - Day 4</option>
-              <option value="pillar:spirituality:5">Spirituality & Peace - Day 5</option>
             </optgroup>
             {schedules.length > 0 && (
               <optgroup label="Legacy Activities">
@@ -5926,7 +5935,8 @@ function BatchAbsenteesTab({ batchId, batchName, token, toast }) {
       const absenteeType = isDnr ? 'DNR (Did Not Report)' : (isAbs ? 'Attendance < 30%' : 'PRESENT')
       return {
         '#': idx + 1,
-        'PRN / Student ID': s.prn || '—',
+        'Student ID': s.system_student_id || s.student_id || s.student_display_id || s.prn || '—',
+        'PRN / Student ID': s.system_student_id || s.student_id || s.student_display_id || s.prn || '—',
         'Student Name': s.name || '—',
         'Email': formatStudentEmail(s.email, 'Not provided'),
         'Squad': s.squad || '—',
@@ -6809,7 +6819,7 @@ function AssignStudentsModal({ open, onClose, batchId, batchName, token, toast, 
                         />
                       </td>
                       <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: '750', color: '#154388' }}>
-                        {s.student_id || `LA-${String(s.id).padStart(5, '0')}`}
+                        {s.system_student_id || s.student_id || s.student_display_id || `LA-${String(s.id).padStart(5, '0')}`}
                       </td>
                       <td style={{ padding: '10px 12px', fontWeight: '700', color: '#0f172a' }}>
                         {s.name}
@@ -8381,7 +8391,6 @@ export default function BatchManagementModule({ token, onBatchesChange, initialS
                 padding: 14px 18px !important;
                 border-radius: 12px !important;
                 border: 1px solid #e2e8f0 !important;
-                border-left: 4px solid #ea580c !important;
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
                 background: #ffffff !important;
                 margin-bottom: 16px !important;
@@ -8626,7 +8635,6 @@ export default function BatchManagementModule({ token, onBatchesChange, initialS
                 marginBottom: '16px',
                 position: 'relative',
                 border: '1px solid #e2e8f0',
-                borderLeft: '4px solid #ea580c',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
                 boxSizing: 'border-box',
                 display: 'flex',
@@ -8637,64 +8645,33 @@ export default function BatchManagementModule({ token, onBatchesChange, initialS
               {/* Top Row: Batch Info + Metrics Capsule */}
               <div className="active-batch-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
                 
-                {/* Left side: Icon + Batch Info */}
+                {/* Left side: Batch Info (no decorative icon, no redundant batch code) */}
                 <div className="active-batch-info-block" style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
-                  <div 
-                    className="active-batch-icon-container"
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '10px',
-                      background: '#fff7ed',
-                      border: '1px solid #fed7aa',
-                      color: '#ea580c',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    <GraduationCap size={18} />
-                  </div>
-
-                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {/* Title + Badges in a clean horizontal flow */}
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {/* Title + Status Badge in a clean horizontal flow */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <h3 style={{ fontSize: '15.5px', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>
                         {activeBatch.name}
                       </h3>
                       
                       <span style={{
-                        fontSize: '9.5px',
-                        fontWeight: '800',
-                        padding: '2px 8px',
-                        borderRadius: '20px',
+                        fontSize: '10.5px',
+                        fontWeight: '750',
+                        padding: '2.5px 8px',
+                        borderRadius: '6px',
                         textTransform: 'uppercase',
-                        background: '#ecfdf5',
-                        color: '#059669',
-                        letterSpacing: '0.5px',
+                        background: '#dcfce7',
+                        color: '#166534',
+                        letterSpacing: '0.4px',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        border: '1px solid #a7f3d0'
+                        border: '1px solid #bbf7d0'
                       }}>
-                        <span className="active-dot" style={{
-                          width: '5px',
-                          height: '5px',
-                          borderRadius: '50%',
-                          background: '#059669',
-                          display: 'inline-block'
-                        }}></span>
                         {t("Active Batch")}
                       </span>
 
-                      {activeBatch.batch_code && (
-                        <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 7px', borderRadius: '6px', fontWeight: '700' }}>
-                          {activeBatch.batch_code}
-                        </span>
-                      )}
                       {activeBatch.class_grade && (
-                        <span style={{ fontSize: '10px', color: '#c2410c', background: '#fff7ed', padding: '2px 7px', borderRadius: '6px', fontWeight: '750', border: '1px solid #fed7aa' }}>
+                        <span style={{ fontSize: '10.5px', color: '#1d4ed8', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px', fontWeight: '750', border: '1px solid #bfdbfe' }}>
                           Class {activeBatch.class_grade}
                         </span>
                       )}
@@ -8928,51 +8905,32 @@ export default function BatchManagementModule({ token, onBatchesChange, initialS
             ) : (
               <div className="batch-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '18px' }}>
                 {tabBatches.map(b => {
+                  const isBatchActive = normalizeStatus(b.status) === 'active'
                   const sc = {
                     active: { 
-                      iconBg: 'linear-gradient(135deg, #10b981, #059669)', 
-                      iconColor: '#ffffff',
-                      iconShadow: '0 6px 14px rgba(16, 185, 129, 0.15)',
-                      badgeBg: '#ecfdf5', 
-                      badgeColor: '#047857', 
-                      badgeBorder: '#a7f3d0', 
-                      accent: '#10b981' 
+                      badgeBg: '#dcfce7', 
+                      badgeColor: '#166534', 
+                      badgeBorder: '#bbf7d0'
                     },
                     upcoming: { 
-                      iconBg: '#f1f5f9', 
-                      iconColor: '#475569',
-                      iconShadow: 'none',
-                      badgeBg: '#f8fafc', 
-                      badgeColor: '#475569', 
-                      badgeBorder: '#e2e8f0', 
-                      accent: '#e2e8f0' 
+                      badgeBg: '#eff6ff', 
+                      badgeColor: '#1e40af', 
+                      badgeBorder: '#bfdbfe'
                     },
                     completed: { 
-                      iconBg: '#f1f5f9', 
-                      iconColor: '#64748b',
-                      iconShadow: 'none',
-                      badgeBg: '#f8fafc', 
-                      badgeColor: '#64748b', 
-                      badgeBorder: '#e2e8f0', 
-                      accent: '#cbd5e1' 
+                      badgeBg: '#f1f5f9', 
+                      badgeColor: '#475569', 
+                      badgeBorder: '#e2e8f0'
                     },
                     archived: { 
-                      iconBg: '#f1f5f9', 
-                      iconColor: '#94a3b8',
-                      iconShadow: 'none',
                       badgeBg: '#f8fafc', 
-                      badgeColor: '#94a3b8', 
-                      badgeBorder: '#e2e8f0', 
-                      accent: '#e2e8f0' 
+                      badgeColor: '#64748b', 
+                      badgeBorder: '#e2e8f0'
                     },
                   }[normalizeStatus(b.status)] || { 
-                    iconBg: '#f1f5f9', 
-                    iconColor: '#64748b',
-                    iconShadow: 'none',
-                    badgeBg: '#f8fafc', 
-                    badgeColor: '#64748b', 
-                    badgeBorder: '#e2e8f0', 
-                    accent: '#cbd5e1' 
+                    badgeBg: '#f1f5f9', 
+                    badgeColor: '#475569', 
+                    badgeBorder: '#e2e8f0'
                   }
 
                   return (
@@ -8983,163 +8941,186 @@ export default function BatchManagementModule({ token, onBatchesChange, initialS
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: '235px',
                         border: '1.5px solid #e2e8f0',
-                        borderRadius: '20px',
+                        borderRadius: '14px',
                         background: '#ffffff',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
                         boxSizing: 'border-box',
                         overflow: 'hidden',
-                        transition: 'all 0.22s ease'
+                        padding: '22px 20px',
+                        gap: '14px',
+                        transition: 'all 0.2s ease'
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-4px)'
-                        e.currentTarget.style.boxShadow = '0 16px 32px rgba(0,0,0,0.08)'
-                        e.currentTarget.style.borderColor = '#c7d2e0'
-                        const badges = e.currentTarget.querySelector('.enrollment-badges-container')
-                        if (badges) badges.style.opacity = '1'
-                        const buttons = e.currentTarget.querySelector('.card-action-buttons-container')
-                        if (buttons) buttons.style.opacity = '1'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 10px 24px rgba(0, 0, 0, 0.06)'
+                        e.currentTarget.style.borderColor = '#cbd5e1'
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)'
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.03)'
                         e.currentTarget.style.borderColor = '#e2e8f0'
-                        if (normalizeStatus(b.status) !== 'active') {
-                          const badges = e.currentTarget.querySelector('.enrollment-badges-container')
-                          if (badges) badges.style.opacity = '0.6'
-                          const buttons = e.currentTarget.querySelector('.card-action-buttons-container')
-                          if (buttons) buttons.style.opacity = '0.7'
-                        }
                       }}
                     >
-                      {/* Accent bar */}
-                      <div style={{ height: '4px', background: sc.accent }} />
-
-                      <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
-                            <div style={{
-                              width: '44px', height: '44px', borderRadius: '14px',
-                              background: sc.iconBg, color: sc.iconColor || '#ffffff',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              flexShrink: 0, boxShadow: sc.iconShadow || 'none'
-                            }}>
-                              <GraduationCap size={22} />
-                            </div>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>{b.name}</h3>
-                                {b.class_grade && (
-                                  <span style={{ fontSize: '10px', color: '#1d4ed8', background: '#dbeafe', padding: '1px 7px', borderRadius: '6px', fontWeight: '800' }}>
-                                    {b.class_grade}
-                                  </span>
-                                )}
-                              </div>
-                              {b.batch_code && <code style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', marginTop: '3px', display: 'block' }}>#{b.batch_code}</code>}
-                            </div>
+                      {/* Top Content Area */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                        {/* Header: Batch Title + Active Status Badge */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
+                            <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>
+                              {b.name}
+                            </h3>
+                            {b.class_grade && (
+                              <span style={{ fontSize: '10.5px', color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '6px', fontWeight: '750' }}>
+                                Class {b.class_grade}
+                              </span>
+                            )}
                           </div>
                           <span style={{
-                            fontSize: '9.5px', fontWeight: '800', padding: '3px 9px', borderRadius: '20px',
-                            textTransform: 'uppercase', background: sc.badgeBg, color: sc.badgeColor,
-                            border: `1px solid ${sc.badgeBorder}`, whiteSpace: 'nowrap', letterSpacing: '0.5px', flexShrink: 0
-                          }}>{t(b.status)}</span>
+                            fontSize: '11px',
+                            fontWeight: '750',
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            textTransform: 'uppercase',
+                            background: sc.badgeBg,
+                            color: sc.badgeColor,
+                            border: `1px solid ${sc.badgeBorder}`,
+                            whiteSpace: 'nowrap',
+                            letterSpacing: '0.4px',
+                            flexShrink: 0
+                          }}>
+                            {t(b.status)}
+                          </span>
                         </div>
 
-                        {/* Location & Dates */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {/* Location & Programme Dates */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '2px' }}>
                           {b.location && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12.5px', color: '#475569' }}>
-                              <MapPin size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                              <span style={{ fontWeight: '600' }}>{b.location}</span>
+                              <MapPin size={13.5} style={{ color: '#64748b', flexShrink: 0 }} />
+                              <span style={{ fontWeight: '500' }}>{b.location}</span>
                             </div>
                           )}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#475569' }}>
-                            <Calendar size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                            <span style={{ fontWeight: '550' }}>{formatDate(b.start_date)} — {formatDate(b.end_date)}</span>
+                            <Calendar size={13.5} style={{ color: '#64748b', flexShrink: 0 }} />
+                            <span style={{ fontWeight: '500' }}>{formatDate(b.start_date)} — {formatDate(b.end_date)}</span>
                           </div>
                         </div>
 
-                        {/* Enrollment solid-color badges */}
-                        <div 
-                          className="enrollment-badges-container"
-                          style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', opacity: normalizeStatus(b.status) === 'active' ? 1 : 0.6, transition: 'opacity 0.22s ease' }}
-                        >
+                        {/* Student Statistics: Enrolled, Boys, Girls */}
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '4px' }}>
                           <span style={{ 
-                            background: normalizeStatus(b.status) === 'active' ? '#334155' : '#f1f5f9', 
-                            color: normalizeStatus(b.status) === 'active' ? '#ffffff' : '#475569', 
-                            border: normalizeStatus(b.status) === 'active' ? 'none' : '1px solid #e2e8f0',
+                            background: '#f8fafc', 
+                            color: '#334155', 
+                            border: '1px solid #e2e8f0',
                             padding: '4px 10px', 
-                            borderRadius: '8px', 
-                            fontSize: '10.5px', 
+                            borderRadius: '6px', 
+                            fontSize: '11px', 
                             fontWeight: '700' 
                           }}>
                             {b.student_count || 0} Enrolled
                           </span>
                           <span style={{ 
-                            background: normalizeStatus(b.status) === 'active' ? '#154388' : '#f1f5f9', 
-                            color: normalizeStatus(b.status) === 'active' ? '#ffffff' : '#475569', 
-                            border: normalizeStatus(b.status) === 'active' ? 'none' : '1px solid #e2e8f0',
+                            background: '#eff6ff', 
+                            color: '#1d4ed8', 
+                            border: '1px solid #bfdbfe',
                             padding: '4px 10px', 
-                            borderRadius: '8px', 
-                            fontSize: '10.5px', 
+                            borderRadius: '6px', 
+                            fontSize: '11px', 
                             fontWeight: '700' 
                           }}>
                             Boys: {b.boys_count || 0}
                           </span>
                           <span style={{ 
-                            background: normalizeStatus(b.status) === 'active' ? '#be185d' : '#f1f5f9', 
-                            color: normalizeStatus(b.status) === 'active' ? '#ffffff' : '#475569', 
-                            border: normalizeStatus(b.status) === 'active' ? 'none' : '1px solid #e2e8f0',
+                            background: '#fdf2f8', 
+                            color: '#be185d', 
+                            border: '1px solid #fbcfe8',
                             padding: '4px 10px', 
-                            borderRadius: '8px', 
-                            fontSize: '10.5px', 
+                            borderRadius: '6px', 
+                            fontSize: '11px', 
                             fontWeight: '700' 
                           }}>
                             Girls: {b.girls_count || 0}
                           </span>
                         </div>
+                      </div>
 
-                        {/* Action buttons */}
-                        <div 
-                          className="card-action-buttons-container"
-                          style={{ display: 'flex', gap: '6px', marginTop: 'auto', opacity: normalizeStatus(b.status) === 'active' ? 1 : 0.7, transition: 'opacity 0.22s ease' }} 
-                          onClick={e => e.stopPropagation()}
+                      {/* Bottom Action Buttons: Open, Edit, Delete */}
+                      <div 
+                        style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: 'auto', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }} 
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBatch(b)}
+                          style={{ 
+                            flex: 1, 
+                            height: '38px', 
+                            background: '#0f172a', 
+                            color: '#ffffff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontSize: '13px', 
+                            fontWeight: '700', 
+                            cursor: 'pointer', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '6px',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#0f172a'}
                         >
-                          <button
-                            onClick={() => setSelectedBatch(b)}
-                            style={{ 
-                              flex: 1, 
-                              padding: '9px 0', 
-                              background: normalizeStatus(b.status) === 'active' ? '#0f172a' : '#f1f5f9', 
-                              color: normalizeStatus(b.status) === 'active' ? '#ffffff' : '#475569', 
-                              border: normalizeStatus(b.status) === 'active' ? 'none' : '1.5px solid #e2e8f0', 
-                              borderRadius: '10px', 
-                              fontSize: '12.5px', 
-                              fontWeight: '700', 
-                              cursor: 'pointer', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              gap: '4px',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <ChevronRight size={13} /> Open
-                          </button>
-                          <button
-                            onClick={() => setEditBatch({ ...b, start_date: b.start_date?.split('T')[0], end_date: b.end_date?.split('T')[0] })}
-                            style={{ padding: '9px 12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', color: '#475569', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(b)}
-                            style={{ padding: '9px 12px', background: '#fff5f5', border: '1.5px solid #fee2e2', borderRadius: '10px', color: '#ef4444', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                          <span>Open</span>
+                          <ChevronRight size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Edit Batch"
+                          onClick={() => setEditBatch({ ...b, start_date: b.start_date?.split('T')[0], end_date: b.end_date?.split('T')[0] })}
+                          style={{ 
+                            width: '38px', 
+                            height: '38px', 
+                            background: '#ffffff', 
+                            border: '1px solid #e2e8f0', 
+                            borderRadius: '8px', 
+                            color: '#475569', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease' 
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete Batch"
+                          onClick={() => handleDelete(b)}
+                          style={{ 
+                            width: '38px', 
+                            height: '38px', 
+                            background: '#ffffff', 
+                            border: '1px solid #fee2e2', 
+                            borderRadius: '8px', 
+                            color: '#ef4444', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease' 
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#fca5a5'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#fee2e2'; }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
                   )

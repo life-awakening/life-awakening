@@ -6,10 +6,10 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
   const [phase, setPhase] = useState(1);
 
   // Form states
-  const [otp1, setOtp1] = useState('');
-  const [otp2, setOtp2] = useState('');
+  const [otp, setOtp] = useState('');
   const [confirmationInput, setConfirmationInput] = useState('');
   const [resetSessionToken, setResetSessionToken] = useState(null);
+  const [sentToEmail, setSentToEmail] = useState('ahsanimamkhan06@gmail.com');
 
   // Status & error states
   const [loading, setLoading] = useState(false);
@@ -25,8 +25,7 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
   const handleClose = () => {
     if (loading) return;
     setPhase(1);
-    setOtp1('');
-    setOtp2('');
+    setOtp('');
     setConfirmationInput('');
     setResetSessionToken(null);
     setErrorMessage('');
@@ -49,7 +48,7 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
   }, [isOpen, phase]);
 
 
-  // Request Dual OTPs
+  // Request Single OTP
   const handleRequestOtp = async () => {
     setLoading(true);
     setErrorMessage('');
@@ -63,22 +62,19 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Failed to request verification codes.');
+        throw new Error(data.message || 'Failed to request verification code.');
       }
 
-      // TEMPORARY BYPASS: If Dual-OTP is bypassed, skip directly to confirmation phase
-      if (data.bypassed && data.resetSessionToken) {
-        setResetSessionToken(data.resetSessionToken);
-        setPhase(3);
-        return;
+      if (data.targetEmail || data.maskedEmail) {
+        setSentToEmail(data.targetEmail || data.maskedEmail);
       }
 
+      // Transition to Phase 2 (Enter OTP interface)
       setPhase(2);
       setCountdown(data.expiresInSeconds || 600);
       setResendCooldown(data.resendCooldownSeconds || 60);
       setAttemptsLeft(5);
-      setOtp1('');
-      setOtp2('');
+      setOtp('');
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -86,11 +82,11 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
     }
   };
 
-  // Verify Both OTPs
+  // Verify Single OTP
   const handleVerifyOtp = async (e) => {
     if (e) e.preventDefault();
-    if (!otp1 || !otp2) {
-      setErrorMessage('Both Verification Code #1 and Verification Code #2 are required.');
+    if (!otp || otp.trim().length !== 6) {
+      setErrorMessage('Please enter the 6-digit Security Verification Code.');
       return;
     }
 
@@ -103,14 +99,14 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ otp1: otp1.trim(), otp2: otp2.trim() })
+        body: JSON.stringify({ otp: otp.trim(), otp1: otp.trim() })
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.attemptsLeft !== undefined) {
           setAttemptsLeft(data.attemptsLeft);
         }
-        throw new Error(data.message || 'Invalid verification codes.');
+        throw new Error(data.message || 'Invalid verification code.');
       }
 
       // Store raw token strictly in component memory
@@ -290,27 +286,54 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                   <AlertTriangle size={16} style={{ color: '#e11d48' }} /> IRREVERSIBLE DESTRUCTIVE OPERATION
                 </div>
                 <p style={{ margin: '0 0 10px 0' }}>
-                  Resetting the database will permanently delete all student accounts, batches, timetable schedules, attendance records, evaluations, tickets, and submitted media files.
+                  Resetting the database will permanently delete all batch and student application data.
                 </p>
-                <div
-                  style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #fda4af',
-                    borderRadius: '6px',
-                    padding: '10px 12px',
-                    fontSize: '12px',
-                    color: '#0f172a'
-                  }}
-                >
-                  <strong style={{ color: '#166534' }}>✓ Preserved:</strong> Administrator, Super Administrator, and Support Panel accounts, audit logs, and core system settings will remain intact.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      fontSize: '11.5px',
+                      color: '#991b1b'
+                    }}
+                  >
+                    <strong style={{ display: 'block', marginBottom: '4px', color: '#b91c1c' }}>✕ Permanently Deleted:</strong>
+                    <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: 1.5 }}>
+                      <li>All Batches and Squad assignments</li>
+                      <li>All Student accounts and Parent links</li>
+                      <li>Attendance records, sessions, and activity logs</li>
+                      <li>Parent / Guardian Consent & Medical Undertakings</li>
+                      <li>Evaluations, grades, feedback, and certificates</li>
+                    </ul>
+                  </div>
+                  <div
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      fontSize: '11.5px',
+                      color: '#166534'
+                    }}
+                  >
+                    <strong style={{ display: 'block', marginBottom: '4px', color: '#15803d' }}>✓ Strictly Preserved:</strong>
+                    <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: 1.5 }}>
+                      <li><strong>LAP Timetable Schedules</strong> (Preserved master timetable)</li>
+                      <li>Administrator & Super Administrator accounts</li>
+                      <li>Faculty member accounts</li>
+                      <li>System configuration & registration settings</li>
+                      <li>Email communication templates & Audit logs</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
 
               <div style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
-                To authorize this action, two independent verification codes will be dispatched to:
+                To authorize this action, a security verification code will be dispatched to:
                 <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontWeight: '600', color: '#1e293b' }}>
-                  <li>ahsanimamkhan06@gmail.com</li>
-                  <li>nk120104@gmail.com</li>
+                  <li>{sentToEmail}</li>
                 </ul>
               </div>
 
@@ -340,12 +363,12 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                 ) : (
                   <KeyRound size={16} />
                 )}
-                {loading ? 'Sending Security Codes...' : 'Send Security Verification Codes'}
+                {loading ? 'Sending Security Code...' : 'Send Security Verification Code'}
               </button>
             </div>
           )}
 
-          {/* PHASE 2: Dual OTP Verification */}
+          {/* PHASE 2: Single OTP Verification */}
           {phase === 2 && (
             <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div
@@ -359,13 +382,13 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontWeight: '700', color: '#0f172a' }}>Verification Codes Sent</span>
+                  <span style={{ fontWeight: '700', color: '#0f172a' }}>Verification Code Sent</span>
                   <span style={{ color: countdown < 60 ? '#dc2626' : '#64748b', fontWeight: '700', fontFamily: 'monospace' }}>
                     Expires in: {formatTime(countdown)}
                   </span>
                 </div>
                 <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b' }}>
-                  Please enter the 6-digit codes sent to both authorized administrators.
+                  Please enter the 6-digit code sent to authorized administrator ({sentToEmail}).
                 </p>
                 {attemptsLeft < 5 && (
                   <div style={{ marginTop: '8px', color: '#dc2626', fontWeight: '700', fontSize: '11.5px' }}>
@@ -376,13 +399,13 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
 
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
-                  Code #1 (Sent to ahsanimamkhan06@gmail.com)
+                  Security Verification Code (Sent to {sentToEmail})
                 </label>
                 <input
                   type="text"
                   maxLength={6}
-                  value={otp1}
-                  onChange={(e) => setOtp1(e.target.value.replace(/\D/g, ''))}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   placeholder="000000"
                   style={{
                     width: '100%',
@@ -396,31 +419,6 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                     boxSizing: 'border-box'
                   }}
                   autoFocus
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
-                  Code #2 (Sent to nk120104@gmail.com)
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={otp2}
-                  onChange={(e) => setOtp2(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    fontSize: '18px',
-                    fontFamily: 'monospace',
-                    letterSpacing: '4px',
-                    textAlign: 'center',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    boxSizing: 'border-box'
-                  }}
                   required
                 />
               </div>
@@ -442,21 +440,21 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                     cursor: resendCooldown > 0 || loading ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Codes'}
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || otp1.length !== 6 || otp2.length !== 6 || countdown === 0}
+                  disabled={loading || otp.length !== 6 || countdown === 0}
                   style={{
                     flex: 2,
                     padding: '10px',
                     borderRadius: '8px',
                     border: 'none',
-                    backgroundColor: otp1.length === 6 && otp2.length === 6 && countdown > 0 ? '#154388' : '#94a3b8',
+                    backgroundColor: otp.length === 6 && countdown > 0 ? '#154388' : '#94a3b8',
                     color: '#ffffff',
                     fontSize: '13px',
                     fontWeight: '700',
-                    cursor: otp1.length === 6 && otp2.length === 6 && countdown > 0 && !loading ? 'pointer' : 'not-allowed',
+                    cursor: otp.length === 6 && countdown > 0 && !loading ? 'pointer' : 'not-allowed',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -464,7 +462,7 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                   }}
                 >
                   {loading ? <RefreshCw size={15} className="animate-spin" /> : <Lock size={15} />}
-                  {loading ? 'Verifying Codes...' : 'Verify Both Codes'}
+                  {loading ? 'Verifying Code...' : 'Verify Code & Proceed'}
                 </button>
               </div>
             </form>
@@ -486,10 +484,18 @@ export default function DatabaseResetFlowModal({ isOpen, onClose, onSuccess, api
                 <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <ShieldAlert size={18} style={{ color: '#dc2626' }} /> FINAL DESTRUCTIVE CONFIRMATION
                 </div>
-                <p style={{ margin: '0 0 8px 0', lineHeight: 1.5 }}>
-                  Dual-party verification successful. To permanently execute the database reset, type the confirmation phrase below:
+                <p style={{ margin: '0 0 10px 0', lineHeight: 1.5 }}>
+                  This action will permanently delete all batches, attendance, undertakings, evaluations, and <strong>all student accounts</strong> from the database.
                 </p>
-                <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '14px', color: '#7f1d1d' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #fca5a5', borderRadius: '6px', padding: '8px 12px', fontSize: '11.5px', color: '#7f1d1d', marginBottom: '10px' }}>
+                  <span style={{ fontWeight: '700' }}>Will be deleted:</span> Batches, Student accounts, Parent links, Attendance, Undertakings, Evaluations, Feedback, Tickets.
+                  <br />
+                  <span style={{ fontWeight: '700', color: '#166534' }}>Will be preserved:</span> <strong>LAP Timetable Schedules</strong>, Administrators, Faculty accounts, App Settings, and Templates.
+                </div>
+                <p style={{ margin: '0 0 6px 0', fontSize: '12px', color: '#991b1b' }}>
+                  To permanently execute the database reset, type the confirmation phrase below:
+                </p>
+                <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '15px', color: '#7f1d1d', background: '#fee2e2', padding: '6px 10px', borderRadius: '6px', textAlign: 'center', letterSpacing: '1px' }}>
                   RESET DATABASE
                 </div>
               </div>

@@ -1130,9 +1130,7 @@ export default function SupportDashboard() {
       'Day 3 Attended': a.day3?.is_recorded ? a.day3.attended : (a.day3?.attended !== undefined ? a.day3.attended : '—'),
       'Day 3 Absent': a.day3?.is_recorded ? a.day3.not_attended : (a.day3?.not_attended !== undefined ? a.day3.not_attended : '—'),
       'Day 4 Attended': a.day4?.is_recorded ? a.day4.attended : (a.day4?.attended !== undefined ? a.day4.attended : '—'),
-      'Day 4 Absent': a.day4?.is_recorded ? a.day4.not_attended : (a.day4?.not_attended !== undefined ? a.day4.not_attended : '—'),
-      'Day 5 Attended': a.day5?.is_recorded ? a.day5.attended : (a.day5?.attended !== undefined ? a.day5.attended : '—'),
-      'Day 5 Absent': a.day5?.is_recorded ? a.day5.not_attended : (a.day5?.not_attended !== undefined ? a.day5.not_attended : '—')
+      'Day 4 Absent': a.day4?.is_recorded ? a.day4.not_attended : (a.day4?.not_attended !== undefined ? a.day4.not_attended : '—')
     }))
 
     if (attendanceSummaryData.totals) {
@@ -1148,9 +1146,7 @@ export default function SupportDashboard() {
         'Day 3 Attended': t.day3?.is_recorded ? t.day3.attended : (t.day3?.attended !== undefined ? t.day3.attended : '—'),
         'Day 3 Absent': t.day3?.is_recorded ? t.day3.not_attended : (t.day3?.not_attended !== undefined ? t.day3.not_attended : '—'),
         'Day 4 Attended': t.day4?.is_recorded ? t.day4.attended : (t.day4?.attended !== undefined ? t.day4.attended : '—'),
-        'Day 4 Absent': t.day4?.is_recorded ? t.day4.not_attended : (t.day4?.not_attended !== undefined ? t.day4.not_attended : '—'),
-        'Day 5 Attended': t.day5?.is_recorded ? t.day5.attended : (t.day5?.attended !== undefined ? t.day5.attended : '—'),
-        'Day 5 Absent': t.day5?.is_recorded ? t.day5.not_attended : (t.day5?.not_attended !== undefined ? t.day5.not_attended : '—')
+        'Day 4 Absent': t.day4?.is_recorded ? t.day4.not_attended : (t.day4?.not_attended !== undefined ? t.day4.not_attended : '—')
       })
     }
 
@@ -5503,11 +5499,11 @@ export default function SupportDashboard() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <CheckCircle2 size={18} color="#2563eb" />
                             <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                              2. 5-Day Attendance Summary (Superadmin Exact Matrix)
+                              2. 4-Day Attendance Summary (Superadmin Exact Matrix)
                             </h3>
                           </div>
                           <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                            Real-time breakdown of student participation across Day 1 through Day 5, matching the official Superadmin attendance matrix.
+                            Real-time breakdown of student participation across Day 1 through Day 4, matching the official Superadmin attendance matrix.
                           </p>
                         </div>
 
@@ -5579,7 +5575,7 @@ export default function SupportDashboard() {
                         <div style={{ backgroundColor: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '8px', padding: '12px' }}>
                           <div style={{ fontSize: '11px', fontWeight: '700', color: '#1d4ed8', textTransform: 'uppercase' }}>Recorded Days</div>
                           <div style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb', marginTop: '4px' }}>
-                            {attendanceSummaryData?.recordedDays?.length || 5} / 5
+                            {attendanceSummaryData?.recordedDays?.length || 4} / 4
                           </div>
                         </div>
                       </div>
@@ -5601,12 +5597,9 @@ export default function SupportDashboard() {
                               <th colSpan="2" style={{ padding: '6px', borderRight: '1px solid #334155', backgroundColor: '#0f172a' }}>Day 1</th>
                               <th colSpan="2" style={{ padding: '6px', borderRight: '1px solid #334155', backgroundColor: '#0f172a' }}>Day 2</th>
                               <th colSpan="2" style={{ padding: '6px', borderRight: '1px solid #334155', backgroundColor: '#0f172a' }}>Day 3</th>
-                              <th colSpan="2" style={{ padding: '6px', borderRight: '1px solid #334155', backgroundColor: '#0f172a' }}>Day 4</th>
-                              <th colSpan="2" style={{ padding: '6px', backgroundColor: '#0f172a' }}>Day 5</th>
+                              <th colSpan="2" style={{ padding: '6px', backgroundColor: '#0f172a' }}>Day 4</th>
                             </tr>
                             <tr style={{ backgroundColor: '#334155', color: '#f1f5f9', fontSize: '10.5px' }}>
-                              <th style={{ padding: '4px 6px', borderRight: '1px solid #475569', color: '#bfdbfe' }}>Att</th>
-                              <th style={{ padding: '4px 6px', borderRight: '1px solid #475569', color: '#cbd5e1' }}>Abs</th>
                               <th style={{ padding: '4px 6px', borderRight: '1px solid #475569', color: '#bfdbfe' }}>Att</th>
                               <th style={{ padding: '4px 6px', borderRight: '1px solid #475569', color: '#cbd5e1' }}>Abs</th>
                               <th style={{ padding: '4px 6px', borderRight: '1px solid #475569', color: '#bfdbfe' }}>Att</th>
@@ -5620,8 +5613,8 @@ export default function SupportDashboard() {
                           <tbody>
                             {loadingAttendanceSummary ? (
                               <tr>
-                                <td colSpan="13" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                                  Loading 5-day attendance summary...
+                                <td colSpan="11" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                                  Loading 4-day attendance summary...
                                 </td>
                               </tr>
                             ) : attendanceSummaryData?.activities && attendanceSummaryData.activities.length > 0 ? (
@@ -5665,22 +5658,14 @@ export default function SupportDashboard() {
                                   <td style={{ padding: '8px 6px', textAlign: 'center', color: '#154388', fontWeight: '700', borderRight: '1px solid #f1f5f9' }}>
                                     {act.day4?.is_recorded ? act.day4.attended : (act.day4?.attended !== undefined ? act.day4.attended : '—')}
                                   </td>
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: '#154388', borderRight: '1px solid #e2e8f0' }}>
-                                    {act.day4?.is_recorded ? act.day4.not_attended : (act.day4?.not_attended !== undefined ? act.day4.not_attended : '—')}
-                                  </td>
-
-                                  {/* Day 5 */}
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: '#154388', fontWeight: '700', borderRight: '1px solid #f1f5f9' }}>
-                                    {act.day5?.is_recorded ? act.day5.attended : (act.day5?.attended !== undefined ? act.day5.attended : '—')}
-                                  </td>
                                   <td style={{ padding: '8px 6px', textAlign: 'center', color: '#154388' }}>
-                                    {act.day5?.is_recorded ? act.day5.not_attended : (act.day5?.not_attended !== undefined ? act.day5.not_attended : '—')}
+                                    {act.day4?.is_recorded ? act.day4.not_attended : (act.day4?.not_attended !== undefined ? act.day4.not_attended : '—')}
                                   </td>
                                 </tr>
                               ))
                             ) : (
                               <tr>
-                                <td colSpan="13" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                                <td colSpan="11" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
                                   No attendance records currently available for this batch.
                                 </td>
                               </tr>
@@ -5723,15 +5708,8 @@ export default function SupportDashboard() {
                                 <td style={{ padding: '9px 6px', textAlign: 'center', color: '#154388', borderRight: '1px solid #cbd5e1' }}>
                                   {attendanceSummaryData.totals.day4?.is_recorded ? attendanceSummaryData.totals.day4.attended : (attendanceSummaryData.totals.day4?.attended !== undefined ? attendanceSummaryData.totals.day4.attended : '—')}
                                 </td>
-                                <td style={{ padding: '9px 6px', textAlign: 'center', color: '#154388', borderRight: '1px solid #cbd5e1' }}>
-                                  {attendanceSummaryData.totals.day4?.is_recorded ? attendanceSummaryData.totals.day4.not_attended : (attendanceSummaryData.totals.day4?.not_attended !== undefined ? attendanceSummaryData.totals.day4.not_attended : '—')}
-                                </td>
-
-                                <td style={{ padding: '9px 6px', textAlign: 'center', color: '#154388', borderRight: '1px solid #cbd5e1' }}>
-                                  {attendanceSummaryData.totals.day5?.is_recorded ? attendanceSummaryData.totals.day5.attended : (attendanceSummaryData.totals.day5?.attended !== undefined ? attendanceSummaryData.totals.day5.attended : '—')}
-                                </td>
                                 <td style={{ padding: '9px 6px', textAlign: 'center', color: '#154388' }}>
-                                  {attendanceSummaryData.totals.day5?.is_recorded ? attendanceSummaryData.totals.day5.not_attended : (attendanceSummaryData.totals.day5?.not_attended !== undefined ? attendanceSummaryData.totals.day5.not_attended : '—')}
+                                  {attendanceSummaryData.totals.day4?.is_recorded ? attendanceSummaryData.totals.day4.not_attended : (attendanceSummaryData.totals.day4?.not_attended !== undefined ? attendanceSummaryData.totals.day4.not_attended : '—')}
                                 </td>
                               </tr>
                             )}

@@ -35,6 +35,8 @@ test_login_endpoint.js
 backend/test_login_endpoint.js
 *.py
 *.xlsx
+!LTC Rooms Availability.xlsx
+!backend/LTC Rooms Availability.xlsx
 # Extraction & temporary guideline text artifacts
 *.pages
 extracted_*.txt
@@ -45,6 +47,9 @@ frontend/ruip_*.txt
 frontend/*.pages
 
 *.pdf
+!frontend/public/awakening-brouchre.pdf
+!frontend/public/awakening-brochure.pdf
+!frontend/awakening-brouchre.pdf
 rendered_*.png
 pdf_structure*.txt
 ltc_template_text.txt

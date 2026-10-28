@@ -679,6 +679,8 @@ const getAttendanceRecords = async (req, res) => {
         params.push(squad);
       }
 
+      whereClauses.push(`(a.day IS NULL OR a.day <= 4)`);
+
       let query = `SELECT a.* FROM attendance a`;
       if (whereClauses.length > 0) {
         query += ` WHERE ` + whereClauses.join(' AND ');
@@ -702,6 +704,7 @@ const getAttendanceRecords = async (req, res) => {
         att = await pool.query(
           `SELECT a.* FROM attendance a
            WHERE (a.batch_id = $1 OR a.schedule_id IN (SELECT id FROM schedules WHERE batch_id = $1))
+             AND (a.day IS NULL OR a.day <= 4)
              AND a.student_id IN (
                SELECT student_id FROM batch_students
                WHERE batch_id = $1 AND ($2::text IS NULL OR squad = $2)
@@ -712,7 +715,8 @@ const getAttendanceRecords = async (req, res) => {
         // Fallback: any attendance for students the faculty has access to
         att = await pool.query(
           `SELECT a.* FROM attendance a
-           WHERE a.student_id IN (
+           WHERE (a.day IS NULL OR a.day <= 4)
+             AND a.student_id IN (
              SELECT bs.student_id FROM batch_students bs
              JOIN batch_faculty bf ON bs.batch_id = bf.batch_id AND bs.squad = bf.squad
              WHERE bf.faculty_id = $1
@@ -735,6 +739,10 @@ const markAttendance = async (req, res) => {
     const parsedDay = day ? parseInt(day, 10) : null;
     const parsedScheduleId = schedule_id ? parseInt(schedule_id, 10) : null;
     const statusVal = status === undefined ? null : status;
+
+    if (parsedDay && (parsedDay < 1 || parsedDay > 4)) {
+      return res.status(400).json({ message: 'Invalid attendance day. Life Awakening attendance only supports Days 1 to 4.' });
+    }
 
     if (req.user.role === 'faculty' || req.user.role === 'ltc_member') {
       // Resolve active batch for attendance write authorization

@@ -842,6 +842,51 @@ textarea.input-field {
   background: #ffffff !important;
 }
 
+/* Empty Squad Card (0 students) - subtle dimmed secondary appearance */
+.squad-card.squad-card--empty {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  border-bottom: 4px solid color-mix(in srgb, var(--squad-color) 65%, #94a3b8) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  opacity: 0.82;
+  filter: saturate(0.85);
+}
+
+.squad-card.squad-card--empty:hover {
+  opacity: 0.95;
+  filter: saturate(0.95);
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.squad-card.squad-card--empty.selected {
+  background: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  border-color: var(--squad-color) !important;
+  border-bottom: 4px solid var(--squad-color) !important;
+  box-shadow: 0 0 0 2px var(--squad-color), 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+.squad-card.squad-card--empty .squad-stat-item {
+  background: #edf2f7;
+  border-color: #e2e8f0;
+}
+
+.squad-card.squad-card--empty .squad-badge {
+  opacity: 0.85;
+}
+
+.squad-card.squad-card--empty .squad-card-title {
+  color: #334155;
+}
+
+.squad-card.squad-card--empty .squad-stat-value {
+  color: #64748b;
+}
+
 .squad-card-header {
   display: flex;
   align-items: center;

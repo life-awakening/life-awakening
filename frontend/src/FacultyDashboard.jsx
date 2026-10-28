@@ -1436,7 +1436,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
       }
 
       const rows = students.map(st => {
-        const row = {};
+        row['Student ID'] = st.system_student_id || st.student_id || st.student_display_id || st.prn || '—';
         if (!isLtcMember) {
           row['PRN'] = st.prn || '—';
         }
@@ -1499,6 +1499,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
         const rate = totalMarked > 0 ? Math.round((presentCount * 34 + lateCount * 33) / (totalMarked * 34) * 100) : 0
 
         const row = {};
+        row['Student ID'] = st.system_student_id || st.student_id || st.student_display_id || st.prn || '—';
         if (!isLtcMember) {
           row['PRN'] = st.prn || '—';
         }
@@ -1515,7 +1516,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
             const rec = studentRecords.find(r => r.pillar === p.key && Number(r.day) === 1);
             row[`${p.name} - Day 1`] = rec ? rec.status : '—';
           } else {
-            for (let d = 2; d <= 5; d++) {
+            for (let d = 2; d <= 4; d++) {
               const rec = studentRecords.find(r => r.pillar === p.key && Number(r.day) === d);
               row[`${p.name} - Day ${d}`] = rec ? rec.status : '—';
             }
@@ -4479,9 +4480,9 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                                       <AlertOctagon size={10} /> DNR (Did Not Report)
                                     </span>
                                   )}
-                                  {st.ltc_id && (
+                                  {(st.system_student_id || st.student_id || st.ltc_id) && (
                                     <span style={{ fontSize: '10px', color: '#ea580c', fontWeight: '700', background: 'rgba(234,88,12,0.08)', padding: '1px 5px', borderRadius: '4px' }}>
-                                      LTC: {st.ltc_id}
+                                      ID: {st.system_student_id || st.student_id || st.ltc_id}
                                     </span>
                                   )}
                                   {!isLtcMember && st.prn && (
@@ -4707,7 +4708,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                           <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', color: '#475569' }}>
                               <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: '800' }}>Student Name</th>
-                              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: '800' }}>PRN</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: '800' }}>Student ID</th>
                               <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '800' }}>Status</th>
                               <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '800' }}>Action</th>
                             </tr>
@@ -4716,7 +4717,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                             {students.map(st => (
                               <tr key={st.id} style={{ borderBottom: '1px solid #f1f5f9', background: st.is_dnr ? '#fff5f5' : '#fff' }}>
                                 <td style={{ padding: '8px 12px', fontWeight: '700', color: '#0f172a' }}>{st.name}</td>
-                                <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace', fontSize: '11.5px' }}>{st.prn || '—'}</td>
+                                <td style={{ padding: '8px 12px', color: '#154388', fontFamily: 'monospace', fontSize: '11.5px', fontWeight: '700' }}>{st.system_student_id || st.student_id || st.student_display_id || st.prn || '—'}</td>
                                 <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                                   {st.is_dnr ? (
                                     <span style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800' }}>
@@ -4761,7 +4762,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                     <thead>
                       <tr style={{ background: '#f8fafc', color: '#475569', borderBottom: '2px solid #cbd5e1' }}>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pillar Name</th>
-                        {['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'].map(d => (
+                        {['Day 1', 'Day 2', 'Day 3', 'Day 4'].map(d => (
                           <th key={d} style={{ padding: '12px 8px', textAlign: 'center', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', width: '130px' }}>{d}</th>
                         ))}
                         <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', width: '120px' }}>Locked Progress</th>
@@ -4770,7 +4771,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                     <tbody>
                       {pillarsList.map((pillar, idx) => {
                         const isBagChecking = pillar.key === 'bag_checking';
-                        const daysToCheck = isBagChecking ? [1] : [2, 3, 4, 5];
+                        const daysToCheck = isBagChecking ? [1] : [2, 3, 4];
                         const totalLocked = daysToCheck.reduce((acc, d) => acc + getAttLockedCount(pillar.key, d), 0);
                         const totalPossible = daysToCheck.length * students.length;
                         const progressPercent = totalPossible > 0 ? Math.round((totalLocked * 100) / totalPossible) : 0;
@@ -4778,7 +4779,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                         return (
                           <tr key={pillar.key} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
                             <td style={{ padding: '14px 16px', fontWeight: '800', color: '#0f172a' }}>{pillar.name}</td>
-                            {[1, 2, 3, 4, 5].map(d => {
+                            {[1, 2, 3, 4].map(d => {
                               if (isBagChecking && d > 1) {
                                 return (
                                   <td key={d} style={{ padding: '8px', textAlign: 'center', color: '#cbd5e1', fontWeight: '500' }}>
@@ -5560,7 +5561,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                       <thead>
                         <tr style={{ background: '#f8fafc', color: '#475569', borderBottom: '2px solid #cbd5e1' }}>
                           <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pillar Name</th>
-                          {['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'].map(d => (
+                          {['Day 1', 'Day 2', 'Day 3', 'Day 4'].map(d => (
                             <th key={d} style={{ padding: '12px 8px', textAlign: 'center', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', width: '140px' }}>{d}</th>
                           ))}
                           <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', width: '120px' }}>Locked Progress</th>
@@ -5568,14 +5569,14 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                       </thead>
                       <tbody>
                         {pillarsList.map((pillar, idx) => {
-                          const totalLocked = [1, 2, 3, 4, 5].reduce((acc, d) => acc + getCompletedCount(pillar.key, d), 0);
-                          const totalPossible = 5 * students.length;
+                          const totalLocked = [1, 2, 3, 4].reduce((acc, d) => acc + getCompletedCount(pillar.key, d), 0);
+                          const totalPossible = 4 * students.length;
                           const progressPercent = totalPossible > 0 ? Math.round((totalLocked * 100) / totalPossible) : 0;
 
                           return (
                             <tr key={pillar.key} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
                               <td style={{ padding: '14px 16px', fontWeight: '800', color: '#0f172a' }}>{pillar.name}</td>
-                              {[1, 2, 3, 4, 5].map(d => {
+                              {[1, 2, 3, 4].map(d => {
                                 const completedCount = getCompletedCount(pillar.key, d);
                                 const isDayCompleted = completedCount === students.length && students.length > 0;
                                 const isDayStarted = completedCount > 0;

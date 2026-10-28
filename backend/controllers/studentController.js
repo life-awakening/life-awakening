@@ -9,8 +9,9 @@ const getDashboard = async (req, res) => {
   try {
     const studentId = req.studentId || req.user.id;
     const myData = await pool.query(
-      `SELECT u.id, u.name, u.email, u.semester, u.department, u.prn, u.red_flag, u.password_changed,
-              u.in_current_batch, u.undertaking_submitted, u.undertaking_signed_name, u.undertaking_signed_date, u.tshirt_size,
+      `SELECT u.id, u.system_student_id, u.name, u.email, u.semester, u.department, u.prn, u.red_flag, u.password_changed,
+              u.in_current_batch, u.onboarding_completed, u.onboarding_completed_at,
+              u.undertaking_submitted, u.undertaking_signed_name, u.undertaking_signed_date, u.tshirt_size,
               u.jain_food, u.monday_fast,
               u.is_squad_leader,
               u.parent_name, u.parent_relationship, u.parent_mobile, u.parent_email, u.address, u.age, u.class_grade,
@@ -142,7 +143,7 @@ const getAttendance = async (req, res) => {
               COALESCE(s.date, 'Day ' || a.day) as date
        FROM attendance a 
        LEFT JOIN schedules s ON a.schedule_id = s.id 
-       WHERE a.student_id = $1`,
+       WHERE a.student_id = $1 AND (a.day IS NULL OR a.day <= 4)`,
       [studentId]
     );
     res.json({ attendance: att.rows });
@@ -321,6 +322,8 @@ const submitUndertaking = async (req, res) => {
         nominee_name = COALESCE($33, nominee_name),
         nominee_relationship = COALESCE($34, nominee_relationship),
         parent_consent_confirmed = true,
+        onboarding_completed = true,
+        onboarding_completed_at = COALESCE(onboarding_completed_at, NOW()),
         name = COALESCE($38, name),
         age = COALESCE($39, age),
         school = COALESCE($40, school),
@@ -453,7 +456,7 @@ const getCertificateData = async (req, res) => {
 
     // Fetch student's name and identity fields
     const userRes = await pool.query(
-      `SELECT id, first_name, middle_name, last_name, name, prn FROM users WHERE id = $1`,
+      `SELECT id, first_name, middle_name, last_name, name, prn, system_student_id FROM users WHERE id = $1`,
       [studentId]
     );
     if (userRes.rowCount === 0) return res.status(404).json({ message: 'User not found' });
@@ -465,9 +468,12 @@ const getCertificateData = async (req, res) => {
       .join(' ') || user.name || 'Student';
     const fullName = rawFullName.replace(/^(mr\.|ms\.|mrs\.|dr\.|prof\.|shri\.|smt\.|mr|ms|mrs|dr|prof|shri|smt)\s+/i, '').trim();
 
-    // Calculate LTC ID using the helper function
-    const [userWithLtcId] = await withLtcId([user]);
-    let ltcId = userWithLtcId ? userWithLtcId.ltc_id : null;
+    // Use official canonical Student ID (LAP-BB-MMyy-SS)
+    let ltcId = user.system_student_id;
+    if (!ltcId) {
+      const [userWithLtcId] = await withLtcId([user]);
+      ltcId = userWithLtcId ? (userWithLtcId.system_student_id || userWithLtcId.ltc_id) : null;
+    }
 
     // Fetch the student's most recent active batch with start/end dates
     const batchRes = await pool.query(
@@ -495,44 +501,11 @@ const getCertificateData = async (req, res) => {
       });
     }
 
-    // Compute the LTC ID using the exact logic from helpers.js / withLtcId
-    const studentsInBatchRes = await pool.query(
-      `SELECT u.id
-       FROM batch_students bs
-       JOIN users u ON bs.student_id = u.id
-       WHERE bs.batch_id = $1
-       ORDER BY u.id ASC`,
-      [batch.id]
-    );
-    const serialIndex = studentsInBatchRes.rows.findIndex(r => r.id === studentId);
-    const serialNo = serialIndex !== -1 ? serialIndex + 1 : 1;
-    const serialStr = String(serialNo).padStart(3, '0');
-
-    // Fetch all active batches ordered by id asc to determine the batch index
-    const allBatchesRes = await pool.query(
-      `SELECT id FROM batches 
-       WHERE (is_deleted = false OR is_deleted IS NULL)
-       ORDER BY id ASC`
-    );
-    const batchIndex = allBatchesRes.rows.findIndex(b => b.id === batch.id);
-    const batchNoStr = batchIndex !== -1 ? String(batchIndex + 1).padStart(2, '0') : '01';
-
-    let monthStr = '07';
-    let yearStr = '26';
-    if (batch.start_date) {
-      const d = new Date(batch.start_date);
-      monthStr = String(d.getMonth() + 1).padStart(2, '0');
-      yearStr = String(d.getFullYear()).slice(-2);
-    }
-    const myStr = monthStr + yearStr;
-    if (!ltcId) {
-      ltcId = `${batchNoStr}-${myStr}-${serialStr}`;
-    }
-    ltcId = ltcId || `${batchNoStr}-${myStr}-${serialStr}`;
-
     res.json({
       fullName,
       ltcId,
+      studentId: ltcId,
+      system_student_id: ltcId,
       batchName: batch.name,
       startDate: batch.start_date,
       endDate: batch.end_date
@@ -715,6 +688,32 @@ const updateMyRoom = async (req, res) => {
   }
 };
 
+const completeOnboarding = async (req, res) => {
+  const studentId = req.studentId || req.body?.student_id || req.body?.studentId || req.user.id;
+  try {
+    const result = await pool.query(
+      `UPDATE users
+       SET onboarding_completed = true,
+           onboarding_completed_at = COALESCE(onboarding_completed_at, NOW())
+       WHERE id = $1
+       RETURNING id, onboarding_completed, onboarding_completed_at`,
+      [studentId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Student account not found' });
+    }
+    return res.json({
+      success: true,
+      message: 'Onboarding completed successfully',
+      onboarding_completed: true,
+      onboarding_completed_at: result.rows[0].onboarding_completed_at
+    });
+  } catch (err) {
+    console.error('Error completing onboarding:', err);
+    return res.status(500).json({ message: 'Failed to complete onboarding', error: err.message });
+  }
+};
+
 module.exports = {
   getDashboard,
   getSchedules,
@@ -722,6 +721,7 @@ module.exports = {
   getEvaluations,
   submitInsurance,
   submitUndertaking,
+  completeOnboarding,
   getProfile,
   changePassword,
   getCertificateData,

@@ -11,10 +11,10 @@ export const exportLtcExcel = ({
   filename,
   isLtcMember = false
 }) => {
-  // Sort batch schedules chronologically to get the first 5 day-wise schedules
+  // Sort batch schedules chronologically to get the first 4 day-wise schedules
   const sortedSchedules = [...schedules]
     .sort((a, b) => new Date(a.date + ' ' + (a.time || '00:00')) - new Date(b.date + ' ' + (b.time || '00:00')))
-    .slice(0, 5);
+    .slice(0, 4);
 
   const rows = students.map((st, index) => {
     // Filter student records
@@ -26,6 +26,7 @@ export const exportLtcExcel = ({
       'Sr No': index + 1
     };
 
+    row['Student ID'] = st.system_student_id || st.student_id || st.student_display_id || st.prn || '-';
     if (!isLtcMember) {
       row['PRN'] = st.prn || '-';
     }
@@ -37,8 +38,8 @@ export const exportLtcExcel = ({
     row['Division'] = st.division || '-';
     row['Squad'] = st.squad || 'Unassigned';
 
-    // 1. Day wise attendance (Day 1 to 5)
-    for (let d = 1; d <= 5; d++) {
+    // 1. Day wise attendance (Day 1 to 4)
+    for (let d = 1; d <= 4; d++) {
       const s = sortedSchedules[d - 1];
       let statusVal = '-';
       if (s) {
@@ -68,9 +69,9 @@ export const exportLtcExcel = ({
       }
     });
 
-    row['Total Present Days'] = totalTracked > 0 ? `${presentCount}/5` : '-';
-    row['Total Absent Days'] = totalTracked > 0 ? `${absentCount}/5` : '-';
-    row['Attendance Percentage'] = totalTracked > 0 ? `${Math.round((presentCount / 5) * 100)}%` : '-';
+    row['Total Present Days'] = totalTracked > 0 ? `${presentCount}/4` : '-';
+    row['Total Absent Days'] = totalTracked > 0 ? `${absentCount}/4` : '-';
+    row['Attendance Percentage'] = totalTracked > 0 ? `${Math.round((presentCount / 4) * 100)}%` : '-';
 
     // 3. Evaluations completeness check
     // Evaluation is Completed if there is a summary AND all 25 records (5 pillars x 5 days) are locked

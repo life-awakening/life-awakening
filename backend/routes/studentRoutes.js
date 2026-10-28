@@ -11,11 +11,12 @@ const passwordOtpController = require('../controllers/passwordOtpController');
 const requireLtcUndertaking = async (req, res, next) => {
   try {
     const targetId = req.studentId || req.user.id;
-    const userRes = await pool.query('SELECT undertaking_submitted FROM users WHERE id = $1', [targetId]);
-    if (!userRes.rows[0]?.undertaking_submitted) {
+    const userRes = await pool.query('SELECT undertaking_submitted, onboarding_completed FROM users WHERE id = $1', [targetId]);
+    if (!userRes.rows[0]?.undertaking_submitted && !userRes.rows[0]?.onboarding_completed) {
       return res.status(403).json({
-        message: 'Please complete your undertaking first to access the Student Portal.',
-        requires_undertaking: true
+        message: 'Please complete your onboarding and undertaking first to access the Student Portal.',
+        requires_undertaking: true,
+        requires_onboarding: true
       });
     }
     next();
@@ -27,9 +28,10 @@ const requireLtcUndertaking = async (req, res, next) => {
 router.get('/dashboard', authMiddleware(['student', 'parent']), authorizeStudentContext, studentController.getDashboard);
 router.get('/schedules', authMiddleware(['student', 'parent']), authorizeStudentContext, requireLtcUndertaking, studentController.getSchedules);
 router.get('/attendance', authMiddleware(['student', 'parent']), authorizeStudentContext, requireLtcUndertaking, studentController.getAttendance);
-router.get('/evaluations', authMiddleware(['student', 'parent']), authorizeStudentContext, requireLtcUndertaking, studentController.getEvaluations);
+router.get('/evaluations', authMiddleware(['student', 'parent']), authorizeStudentContext, studentController.getEvaluations);
 router.post('/submit-insurance', authMiddleware(['student', 'parent']), authorizeStudentContext, studentController.submitInsurance);
 router.post('/submit-undertaking', authMiddleware(['student', 'parent']), authorizeStudentContext, studentController.submitUndertaking);
+router.post('/complete-onboarding', authMiddleware(['student', 'parent']), authorizeStudentContext, studentController.completeOnboarding);
 router.get('/profile', authMiddleware(['student', 'parent']), authorizeStudentContext, studentController.getProfile);
 router.post('/request-password-otp', authMiddleware(['student', 'parent']), passwordOtpController.requestPasswordOtp);
 router.post('/resend-password-otp', authMiddleware(['student', 'parent']), passwordOtpController.resendPasswordOtp);

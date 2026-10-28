@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Plus, Search, Trash2, RefreshCw, GraduationCap, X, Eye, Edit2,
   User, Mail, Phone, MapPin, Shield, CheckCircle2, XCircle, FileCheck,
-  School, ChevronLeft, ChevronRight, Users, ExternalLink, Layers, Check
+  School, ChevronLeft, ChevronRight, Users, ExternalLink, Layers, Check,
+  HeartPulse, CreditCard, FileText, AlertTriangle, UploadCloud, Lock, Calendar,
+  Upload, FileImage, AlertCircle, Heart, ChevronDown, ChevronUp
 } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
@@ -31,13 +33,13 @@ function Modal({ open, onClose, title, children, size = '' }) {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
+          maxHeight: '92vh',
           width: '100%',
           borderRadius: '16px',
           overflow: 'hidden',
           border: '1px solid #e2e8f0',
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-          maxWidth: size === 'lg' ? '780px' : '540px',
+          maxWidth: size === 'xl' ? '920px' : (size === 'lg' ? '780px' : '540px'),
           background: '#ffffff'
         }}
       >
@@ -143,7 +145,8 @@ export default function StudentsModule({
     if (legacyStudents.length > 0) {
       return legacyStudents.map(u => ({
         id: u.id,
-        student_id: `LA-${String(u.id).padStart(5, '0')}`,
+        student_id: u.system_student_id || u.student_id || `LA-${String(u.id).padStart(5, '0')}`,
+        system_student_id: u.system_student_id || null,
         name: u.name,
         class_grade: u.class_grade || '—',
         school: u.school || null,
@@ -152,10 +155,13 @@ export default function StudentsModule({
         division: u.division || null,
         guardian_name: u.nominee_name || null,
         guardian_relationship: u.nominee_relationship || null,
-        parent1_email: u.parent_email || null,
-        parent2_email: null,
-        parents_linked: u.parent_email ? 1 : 0,
-        parents: u.parent_email ? [{ email: u.parent_email, name: u.nominee_name || 'Parent', relationship: u.nominee_relationship || 'Parent' }] : [],
+        parent1_email: u.parent1_email || u.parent_email || null,
+        parent2_email: u.parent2_email || u.personal_email || null,
+        parents_linked: ((u.parent1_email || u.parent_email) ? 1 : 0) + ((u.parent2_email || u.personal_email) ? 1 : 0),
+        parents: [
+          (u.parent1_email || u.parent_email) ? { email: u.parent1_email || u.parent_email, name: u.nominee_name || 'Primary Parent', relationship: u.nominee_relationship || 'Parent' } : null,
+          (u.parent2_email || u.personal_email) ? { email: u.parent2_email || u.personal_email, name: 'Secondary Parent', relationship: 'Parent' } : null
+        ].filter(Boolean),
         contact_number: u.parent_mobile || u.phone || null,
         payment_status: u.payment_status || 'pending',
         consent_status: u.parent_consent_confirmed ? 'confirmed' : 'pending',
@@ -260,12 +266,62 @@ export default function StudentsModule({
     if (fetchUsers) fetchUsers()
   }
 
+  const receiptFileInputRef = useRef(null)
+  const signatureFileInputRef = useRef(null)
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false)
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false)
+  const [showFullConsentText, setShowFullConsentText] = useState(false)
+
+  const DEFAULT_LAP_CONSENT_TEXT = `I, parent/guardian of the above-mentioned student, hereby grant permission for my child to participate in the Life Awakening Program conducted at Life Transformation Centre (LTC), Boribel.
+I understand and acknowledge that:
+• The program includes outdoor, physical, sports, agricultural, nature-based, leadership, and experiential learning activities.
+• While LTC shall take all reasonable precautions to ensure participant safety and provide supervision, no outdoor or physical activity can be entirely risk-free.
+• Minor injuries, illness, insect bites, falls, environmental exposure, or unforeseen incidents may occur despite reasonable precautions.
+• I authorize LTC and its designated representatives to arrange appropriate medical treatment, transportation, and emergency care for my child if required.
+• I have truthfully disclosed all relevant medical conditions, allergies, medications, and health-related information.
+• My child agrees to comply with all rules, safety instructions, and codes of conduct issued by LTC, instructors, and accompanying school staff.
+• I confirm that I have read and understood the nature of the Life Awakening Program, safety protocols, and participation expectations, and voluntarily consent to my child's participation.`
+
+  const handleFileUpload = async (file, fieldType) => {
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    if (fieldType === 'receipt') setIsUploadingReceipt(true)
+    if (fieldType === 'signature') setIsUploadingSignature(true)
+
+    try {
+      const res = await apiFetch('/api/admin/upload-file', {
+        method: 'POST',
+        body: formData
+      })
+      if (res && res.ok) {
+        const data = await res.json()
+        if (fieldType === 'receipt') {
+          setEditForm(prev => ({ ...prev, payment_screenshot_url: data.url }))
+          if (toast) toast('Payment receipt uploaded successfully', 'success')
+        } else if (fieldType === 'signature') {
+          setEditForm(prev => ({ ...prev, digital_signature_url: data.url }))
+          if (toast) toast('Digital signature uploaded successfully', 'success')
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        if (toast) toast(errData?.message || 'Failed to upload file', 'error')
+      }
+    } catch (err) {
+      if (toast) toast('Upload error: ' + err.message, 'error')
+    } finally {
+      if (fieldType === 'receipt') setIsUploadingReceipt(false)
+      if (fieldType === 'signature') setIsUploadingSignature(false)
+    }
+  }
+
   // View Student Profile
   const handleViewProfile = async (studentId) => {
     setIsLoadingProfile(true)
     setIsProfileModalOpen(true)
     setSelectedStudentProfile(null)
     setIsEditing(false)
+    setShowFullConsentText(false)
     try {
       const res = await apiFetch(`/api/admin/users/${studentId}/profile`)
       if (res && res.ok) {
@@ -275,25 +331,32 @@ export default function StudentsModule({
         setSelectedStudentProfile(data.user)
         setEditForm({
           name: data.user.name || '',
-          class_grade: data.user.class_grade || '',
-          school: data.user.school || '',
-          school_branch: data.user.school_branch || '',
-          roll_number: data.user.roll_number || '',
-          division: data.user.division || '',
-          phone: data.user.phone || '',
-          parent_mobile: data.user.parent_mobile || '',
-          emergency_contact_alt_mobile: data.user.emergency_contact_alt_mobile || '',
-          nominee_name: data.user.nominee_name || '',
-          nominee_relationship: data.user.nominee_relationship || '',
-          parent_email: p1Email,
-          parent1_email: p1Email,
-          parent2_email: p2Email,
-          address: data.user.address || '',
+          email: data.user.email || '',
           dob: data.user.dob ? String(data.user.dob).slice(0, 10) : '',
           gender: data.user.gender || '',
           blood_group: data.user.blood_group || '',
+          school: data.user.school || '',
+          school_branch: data.user.school_branch || '',
+          class_grade: data.user.class_grade || '',
+          division: data.user.division || '',
+          prn: data.user.prn || '',
+          roll_number: data.user.roll_number || '',
+          parent_name: data.user.parent_name || data.user.nominee_name || '',
+          parent_relationship: data.user.parent_relationship || data.user.nominee_relationship || 'Father',
+          parent1_email: p1Email,
+          parent2_email: p2Email,
+          parent_email: p1Email,
+          parent_mobile: data.user.parent_mobile || data.user.phone || '',
+          emergency_contact_alt_mobile: data.user.emergency_contact_alt_mobile || '',
+          address: data.user.address || '',
+          has_medical_condition: (data.user.has_medical_condition && String(data.user.has_medical_condition).trim().toLowerCase() === 'yes') ? 'Yes' : 'No',
+          medical_conditions: data.user.medical_conditions || data.user.med_details || '',
+          known_allergies: data.user.known_allergies || '',
           payment_status: data.user.payment_status || 'pending',
-          parent_consent_confirmed: data.user.parent_consent_confirmed || false
+          payment_screenshot_url: data.user.payment_screenshot_url || '',
+          parent_consent_confirmed: Boolean(data.user.parent_consent_confirmed),
+          parent_consent_text: data.user.parent_consent_text || DEFAULT_LAP_CONSENT_TEXT,
+          digital_signature_url: data.user.digital_signature_url || ''
         })
       } else {
         if (toast) toast('Failed to load student profile', 'error')
@@ -315,6 +378,7 @@ export default function StudentsModule({
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const p1 = (editForm.parent1_email || '').trim().toLowerCase()
     const p2 = (editForm.parent2_email || '').trim().toLowerCase()
+    const stEmail = (editForm.email || '').trim().toLowerCase()
 
     if (p1 && !emailRegex.test(p1)) {
       if (toast) toast(`Invalid Parent 1 email format: "${p1}"`, 'error')
@@ -328,14 +392,38 @@ export default function StudentsModule({
       if (toast) toast('Parent 1 and Parent 2 cannot have the same email address', 'error')
       return
     }
+    if (stEmail && !emailRegex.test(stEmail)) {
+      if (toast) toast(`Invalid Student email format: "${stEmail}"`, 'error')
+      return
+    }
+    if (stEmail && (stEmail === p1 || stEmail === p2)) {
+      if (toast) toast('Student email cannot be the same as parent email address', 'error')
+      return
+    }
 
     setIsSavingAccount(true)
     try {
       const payload = {
         ...editForm,
+        name: (editForm.name || '').trim(),
+        email: stEmail || null,
+        parent_name: (editForm.parent_name || '').trim(),
+        nominee_name: (editForm.parent_name || '').trim(),
+        parent_relationship: (editForm.parent_relationship || '').trim(),
+        nominee_relationship: (editForm.parent_relationship || '').trim(),
         parent_email: p1 || null,
         parent1_email: p1 || null,
-        parent2_email: p2 || null
+        parent2_email: p2 || null,
+        parent_mobile: (editForm.parent_mobile || '').trim(),
+        phone: (editForm.parent_mobile || '').trim(),
+        emergency_contact_alt_mobile: (editForm.emergency_contact_alt_mobile || '').trim(),
+        medical_conditions: (editForm.medical_conditions || '').trim(),
+        med_details: (editForm.medical_conditions || '').trim(),
+        known_allergies: (editForm.known_allergies || '').trim(),
+        payment_screenshot_url: (editForm.payment_screenshot_url || '').trim(),
+        digital_signature_url: (editForm.digital_signature_url || '').trim(),
+        parent_consent_confirmed: Boolean(editForm.parent_consent_confirmed),
+        parent_consent_text: (editForm.parent_consent_text || '').trim()
       }
       const res = await apiFetch(`/api/admin/users/${selectedStudentProfile.id}/profile`, {
         method: 'PUT',
@@ -364,7 +452,7 @@ export default function StudentsModule({
         handleRefresh()
         if (loadStudents) loadStudents()
       } else {
-        const errData = await res.json()
+        const errData = await res.json().catch(() => ({}))
         if (toast) toast(errData?.message || 'Failed to update student details', 'error')
       }
     } catch (err) {
@@ -695,7 +783,7 @@ export default function StudentsModule({
                       {/* 2. Permanent Student ID */}
                       <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontFamily: 'monospace', fontWeight: '750', fontSize: '12.5px', color: '#c2410c', background: '#fff7ed', border: '1px solid #fed7aa', padding: '2px 7px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
-                          {st.student_id || `LA-${String(st.id).padStart(5, '0')}`}
+                          {st.system_student_id || st.student_id || st.student_display_id || `LA-${String(st.id).padStart(5, '0')}`}
                         </span>
                       </td>
 
@@ -895,14 +983,31 @@ export default function StudentsModule({
       </div>
 
       {/* ── View / Edit Student Profile Modal ── */}
-      <Modal open={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} title="Student Profile & Parent Information" size="lg">
+      <Modal open={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} title="Student Profile & Parent Information" size="xl">
+        {/* Hidden File Inputs for Receipt and Signature */}
+        <input
+          type="file"
+          ref={receiptFileInputRef}
+          style={{ display: 'none' }}
+          accept="image/*,application/pdf"
+          onChange={e => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0], 'receipt') }}
+        />
+        <input
+          type="file"
+          ref={signatureFileInputRef}
+          style={{ display: 'none' }}
+          accept="image/*"
+          onChange={e => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0], 'signature') }}
+        />
+
         {isLoadingProfile ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '50px 0', gap: '14px' }}>
             <div className="spinner spinner-sm" style={{ animation: 'spin 1s linear infinite' }} />
-            <p style={{ color: '#64748b', fontSize: '14px', fontWeight: '500' }}>Fetching profile information…</p>
+            <p style={{ color: '#64748b', fontSize: '14px', fontWeight: '500' }}>Fetching complete student registration profile…</p>
           </div>
         ) : selectedStudentProfile ? (
           <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '18px', fontSize: '13px' }}>
+            
             {/* Header Banner */}
             <div style={{
               background: 'linear-gradient(135deg, #154388 0%, #1e40af 100%)',
@@ -912,7 +1017,8 @@ export default function StudentsModule({
               display: 'flex',
               alignItems: 'center',
               gap: '16px',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
+              boxShadow: '0 4px 16px rgba(21, 67, 136, 0.15)'
             }}>
               <div style={{
                 width: '56px',
@@ -925,21 +1031,26 @@ export default function StudentsModule({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
               }}>
                 {getInitials(selectedStudentProfile.name)}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: '200px' }}>
-                <h4 style={{ fontSize: '18px', fontWeight: '850', margin: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: '220px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: '850', margin: 0, letterSpacing: '-0.2px' }}>
                   {selectedStudentProfile.name}
                 </h4>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
-                  <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: '750', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '4px' }}>
-                    Student ID: {selectedStudentProfile.student_display_id || `LA-${String(selectedStudentProfile.id).padStart(5, '0')}`}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '3px' }}>
+                  <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: '750', background: 'rgba(255,255,255,0.22)', padding: '2px 8px', borderRadius: '4px' }}>
+                    Student ID: {selectedStudentProfile.system_student_id || selectedStudentProfile.student_id || selectedStudentProfile.student_display_id || `LA-${String(selectedStudentProfile.id).padStart(5, '0')}`}
                   </span>
                   {selectedStudentProfile.class_grade && (
-                    <span style={{ fontSize: '11px', fontWeight: '700', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', background: 'rgba(255,255,255,0.22)', padding: '2px 8px', borderRadius: '4px' }}>
                       Class {selectedStudentProfile.class_grade}
+                    </span>
+                  )}
+                  {selectedStudentProfile.school && (
+                    <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: '4px', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedStudentProfile.school}
                     </span>
                   )}
                 </div>
@@ -948,49 +1059,136 @@ export default function StudentsModule({
                 type="button"
                 onClick={() => setIsEditing(!isEditing)}
                 style={{
-                  background: isEditing ? '#ef4444' : '#ffffff',
-                  color: isEditing ? '#ffffff' : '#154388',
-                  border: 'none',
+                  background: isEditing ? '#fee2e2' : '#ffffff',
+                  color: isEditing ? '#b91c1c' : '#154388',
+                  border: isEditing ? '1px solid #f87171' : 'none',
                   borderRadius: '8px',
-                  padding: '7px 14px',
-                  fontWeight: '700',
-                  fontSize: '12px',
-                  cursor: 'pointer'
+                  padding: '8px 16px',
+                  fontWeight: '750',
+                  fontSize: '12.5px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
                 }}
               >
-                {isEditing ? 'Cancel Edit' : 'Edit Details'}
+                {isEditing ? <X size={14} /> : <Edit2 size={14} />}
+                {isEditing ? 'Cancel Edit' : 'Edit Profile'}
               </button>
             </div>
 
-            {/* Profile Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+            {/* Profile Grid: 2 columns on desktop */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '14px' }}>
               
-              {/* School Information Block */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
-                  <School size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-2px' }} /> School Information
+              {/* 1. Student Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <User size={14} style={{ color: '#2563eb' }} /> 1. Student Information
                 </h5>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
                   <div style={{ gridColumn: 'span 2' }}>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>School Name</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Student Full Name</div>
                     {isEditing ? (
-                      <input type="text" value={editForm.school || ''} onChange={e => setEditForm({ ...editForm, school: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
+                      <input type="text" value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{selectedStudentProfile.school || '—'}</div>
+                      <div style={{ fontWeight: '750', color: '#0f172a', marginTop: '3px' }}>{selectedStudentProfile.name || '—'}</div>
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>School Branch</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Date of Birth</div>
                     {isEditing ? (
-                      <input type="text" value={editForm.school_branch || ''} onChange={e => setEditForm({ ...editForm, school_branch: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
+                      <input type="date" value={editForm.dob || ''} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.school_branch || '—'}</div>
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.dob ? String(selectedStudentProfile.dob).slice(0, 10) : '—'}</div>
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Class / Standard</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Gender</div>
                     {isEditing ? (
-                      <select value={editForm.class_grade || ''} onChange={e => setEditForm({ ...editForm, class_grade: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }}>
+                      <select value={editForm.gender || ''} onChange={e => setEditForm({ ...editForm, gender: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    ) : (
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.gender || '—'}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Blood Group</div>
+                    {isEditing ? (
+                      <select value={editForm.blood_group || ''} onChange={e => setEditForm({ ...editForm, blood_group: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
+                        <option value="">Select Blood Group</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    ) : (
+                      <div style={{ marginTop: '3px' }}>
+                        <span style={{ background: '#fef2f2', color: '#991b1b', padding: '2px 8px', borderRadius: '4px', fontWeight: '750', fontSize: '11.5px' }}>
+                          {selectedStudentProfile.blood_group || '—'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>System Student ID</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px', color: '#475569' }}>
+                      <Lock size={12} style={{ color: '#94a3b8' }} />
+                      <span style={{ fontFamily: 'monospace', fontWeight: '750', fontSize: '12px', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                        {selectedStudentProfile.system_student_id || selectedStudentProfile.student_id || selectedStudentProfile.student_display_id || `LA-${String(selectedStudentProfile.id).padStart(5, '0')}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
+                      Student Email Address {isEditing && <span style={{ fontWeight: '500', color: '#94a3b8' }}>(Optional for school students)</span>}
+                    </div>
+                    {isEditing ? (
+                      <input type="email" value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="student@example.com (optional)" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontFamily: 'monospace', color: selectedStudentProfile.email ? '#0f172a' : '#94a3b8', marginTop: '3px', fontWeight: '600' }}>
+                        {selectedStudentProfile.email || 'None (School Student)'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. School Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <School size={14} style={{ color: '#059669' }} /> 2. School Information
+                </h5>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>School Name</div>
+                    {isEditing ? (
+                      <input type="text" value={editForm.school || ''} onChange={e => setEditForm({ ...editForm, school: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontWeight: '750', color: '#0f172a', marginTop: '3px' }}>{selectedStudentProfile.school || '—'}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>School Branch</div>
+                    {isEditing ? (
+                      <input type="text" value={editForm.school_branch || ''} onChange={e => setEditForm({ ...editForm, school_branch: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.school_branch || '—'}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Class / Standard</div>
+                    {isEditing ? (
+                      <select value={editForm.class_grade || ''} onChange={e => setEditForm({ ...editForm, class_grade: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
                         <option value="">Select Class</option>
                         <option value="6th">6th</option>
                         <option value="7th">7th</option>
@@ -999,218 +1197,430 @@ export default function StudentsModule({
                         <option value="10th">10th</option>
                       </select>
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.class_grade || '—'}</div>
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.class_grade || '—'}</div>
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Roll Number</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Division / Section</div>
                     {isEditing ? (
-                      <input type="text" value={editForm.roll_number || ''} onChange={e => setEditForm({ ...editForm, roll_number: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
+                      <input type="text" value={editForm.division || ''} onChange={e => setEditForm({ ...editForm, division: e.target.value })} placeholder="e.g. Griffin, Auriga" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.roll_number || '—'}</div>
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.division || '—'}</div>
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Division</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>PRN / Roll No.</div>
                     {isEditing ? (
-                      <input type="text" value={editForm.division || ''} onChange={e => setEditForm({ ...editForm, division: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
+                      <input type="text" value={editForm.prn || ''} onChange={e => setEditForm({ ...editForm, prn: e.target.value, roll_number: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.division || '—'}</div>
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.prn || selectedStudentProfile.roll_number || '—'}</div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Linked Parent Accounts Block */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
-                  <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <Shield size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-2px' }} /> Linked Parent Accounts
-                  </h5>
-                  {isEditing && (
-                    <span style={{ fontSize: '11px', color: '#ea580c', fontWeight: '700' }}>Editing Emails</span>
-                  )}
-                </div>
-
-                {isEditing ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '10px', color: '#0f172a', fontWeight: '750', textTransform: 'uppercase', display: 'block', marginBottom: '3px' }}>
-                        Parent 1 Email (Primary) <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={editForm.parent1_email || ''}
-                        onChange={e => setEditForm({ ...editForm, parent1_email: e.target.value })}
-                        placeholder="e.g. parent1@example.com"
-                        style={{ width: '100%', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '12.5px', boxSizing: 'border-box' }}
-                      />
-                      <span style={{ fontSize: '10px', color: '#64748b' }}>Primary parent login and notification email.</span>
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: '10px', color: '#0f172a', fontWeight: '750', textTransform: 'uppercase', display: 'block', marginBottom: '3px' }}>
-                        Parent 2 Email (Secondary / Optional)
-                      </label>
-                      <input
-                        type="email"
-                        value={editForm.parent2_email || ''}
-                        onChange={e => setEditForm({ ...editForm, parent2_email: e.target.value })}
-                        placeholder="e.g. parent2@example.com (optional)"
-                        style={{ width: '100%', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '12.5px', boxSizing: 'border-box' }}
-                      />
-                      <span style={{ fontSize: '10px', color: '#64748b' }}>Secondary parent login. Leave empty if only one parent.</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {/* Parent 1 Display */}
-                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: '750', fontSize: '12px', color: '#0f172a' }}>
-                          Parent 1 (Primary)
-                        </span>
-                        <span style={{ fontSize: '10px', background: '#eff6ff', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
-                          Primary
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '12.5px', color: '#0f172a', fontFamily: 'monospace', marginTop: '3px', fontWeight: '600' }}>
-                        {selectedStudentProfile.parent1_email || (selectedStudentProfile.parents && selectedStudentProfile.parents[0]?.email) || selectedStudentProfile.parent_email || '—'}
-                      </div>
-                      {selectedStudentProfile.parents && selectedStudentProfile.parents[0]?.phone && (
-                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                          Phone: {selectedStudentProfile.parents[0].phone}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Parent 2 Display */}
-                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: '750', fontSize: '12px', color: '#0f172a' }}>
-                          Parent 2 (Secondary)
-                        </span>
-                        <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
-                          Secondary
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '12.5px', color: (selectedStudentProfile.parent2_email || (selectedStudentProfile.parents && selectedStudentProfile.parents[1]?.email)) ? '#0f172a' : '#94a3b8', fontFamily: 'monospace', marginTop: '3px', fontWeight: '600' }}>
-                        {selectedStudentProfile.parent2_email || (selectedStudentProfile.parents && selectedStudentProfile.parents[1]?.email) || '—'}
-                      </div>
-                      {selectedStudentProfile.parents && selectedStudentProfile.parents[1]?.phone && (
-                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                          Phone: {selectedStudentProfile.parents[1].phone}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Personal & Contact Information */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
-                  <User size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-2px' }} /> Student Details & Contacts
+              {/* 3. Parent / Guardian Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={14} style={{ color: '#d97706' }} /> 3. Parent / Guardian Information
                 </h5>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>WhatsApp Number</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Parent / Guardian Name</div>
                     {isEditing ? (
-                      <input type="text" value={editForm.parent_mobile || ''} onChange={e => setEditForm({ ...editForm, parent_mobile: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
+                      <input type="text" value={editForm.parent_name || ''} onChange={e => setEditForm({ ...editForm, parent_name: e.target.value })} placeholder="Parent Full Name" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.parent_mobile || selectedStudentProfile.phone || '—'}</div>
+                      <div style={{ fontWeight: '750', color: '#0f172a', marginTop: '3px' }}>{selectedStudentProfile.parent_name || selectedStudentProfile.nominee_name || '—'}</div>
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Alternate Contact</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Relationship</div>
                     {isEditing ? (
-                      <input type="text" value={editForm.emergency_contact_alt_mobile || ''} onChange={e => setEditForm({ ...editForm, emergency_contact_alt_mobile: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
-                    ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.emergency_contact_alt_mobile || '—'}</div>
-                    )}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Date of Birth</div>
-                    {isEditing ? (
-                      <input type="date" value={editForm.dob || ''} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }} />
-                    ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.dob ? String(selectedStudentProfile.dob).slice(0, 10) : '—'}</div>
-                    )}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Gender</div>
-                    {isEditing ? (
-                      <select value={editForm.gender || ''} onChange={e => setEditForm({ ...editForm, gender: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }}>
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
+                      <select value={editForm.parent_relationship || 'Father'} onChange={e => setEditForm({ ...editForm, parent_relationship: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Guardian">Guardian</option>
                         <option value="Other">Other</option>
                       </select>
                     ) : (
-                      <div style={{ fontWeight: '700', color: '#475569', marginTop: '2px' }}>{selectedStudentProfile.gender || '—'}</div>
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.parent_relationship || selectedStudentProfile.nominee_relationship || '—'}</div>
+                    )}
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Parent 1 Email (Primary Login)</span>
+                      <span style={{ fontSize: '10px', background: '#eff6ff', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Primary</span>
+                    </div>
+                    {isEditing ? (
+                      <input type="email" required value={editForm.parent1_email || ''} onChange={e => setEditForm({ ...editForm, parent1_email: e.target.value })} placeholder="parent1@example.com" style={{ width: '100%', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontFamily: 'monospace', fontWeight: '650', color: '#0f172a', marginTop: '3px' }}>
+                        {selectedStudentProfile.parent1_email || selectedStudentProfile.parent_email || '—'}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Parent 2 Email (Secondary / Optional)</span>
+                      <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>Secondary</span>
+                    </div>
+                    {isEditing ? (
+                      <input type="email" value={editForm.parent2_email || ''} onChange={e => setEditForm({ ...editForm, parent2_email: e.target.value })} placeholder="parent2@example.com (optional)" style={{ width: '100%', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontFamily: 'monospace', fontWeight: '650', color: selectedStudentProfile.parent2_email ? '#0f172a' : '#94a3b8', marginTop: '3px' }}>
+                        {selectedStudentProfile.parent2_email || 'None'}
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Status, Payment & Consent */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
-                  <FileCheck size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-2px' }} /> Payment & Consent
+              {/* 4. Contact Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Phone size={14} style={{ color: '#0284c7' }} /> 4. Contact Information
                 </h5>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Payment Status</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>WhatsApp Number</div>
                     {isEditing ? (
-                      <select value={editForm.payment_status || 'pending'} onChange={e => setEditForm({ ...editForm, payment_status: e.target.value })} style={{ width: '100%', padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '2px', boxSizing: 'border-box' }}>
+                      <input type="tel" value={editForm.parent_mobile || ''} onChange={e => setEditForm({ ...editForm, parent_mobile: e.target.value, phone: e.target.value })} placeholder="10-digit mobile" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontWeight: '750', color: '#0f172a', marginTop: '3px' }}>{selectedStudentProfile.parent_mobile || selectedStudentProfile.phone || '—'}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Alternate Contact</div>
+                    {isEditing ? (
+                      <input type="tel" value={editForm.emergency_contact_alt_mobile || ''} onChange={e => setEditForm({ ...editForm, emergency_contact_alt_mobile: e.target.value })} placeholder="Alternate number" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.emergency_contact_alt_mobile || '—'}</div>
+                    )}
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Residential Address</div>
+                    {isEditing ? (
+                      <textarea rows={2} value={editForm.address || ''} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="Complete residential address" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', marginTop: '3px', boxSizing: 'border-box', lineHeight: 1.4 }} />
+                    ) : (
+                      <div style={{ lineHeight: 1.4, color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.address || '—'}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Medical Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', gridColumn: '1 / -1' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <HeartPulse size={14} style={{ color: '#e11d48' }} /> 5. Medical Information
+                </h5>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', fontSize: '12.5px' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Any Medical Condition?</div>
+                    {isEditing ? (
+                      <select value={editForm.has_medical_condition || 'No'} onChange={e => setEditForm({ ...editForm, has_medical_condition: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                      </select>
+                    ) : (
+                      <div style={{ marginTop: '3px' }}>
+                        <span style={{ fontWeight: '750', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: selectedStudentProfile.has_medical_condition === 'Yes' ? '#fee2e2' : '#f0fdf4', color: selectedStudentProfile.has_medical_condition === 'Yes' ? '#991b1b' : '#166534' }}>
+                          {selectedStudentProfile.has_medical_condition === 'Yes' ? 'Yes (Condition Reported)' : 'No Medical Condition'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Known Allergies</div>
+                    {isEditing ? (
+                      <input type="text" value={editForm.known_allergies || ''} onChange={e => setEditForm({ ...editForm, known_allergies: e.target.value })} placeholder="e.g. Dust, Food allergies, or 'No'" style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }} />
+                    ) : (
+                      <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.known_allergies || 'No allergies reported'}</div>
+                    )}
+                  </div>
+
+                  {/* Prominent Medical Details Box when Yes */}
+                  {((isEditing && editForm.has_medical_condition === 'Yes') || (!isEditing && selectedStudentProfile.has_medical_condition === 'Yes')) && (
+                    <div style={{ gridColumn: '1 / -1', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991b1b', fontWeight: '800', fontSize: '12.5px', marginBottom: '6px' }}>
+                        <AlertTriangle size={15} style={{ color: '#dc2626' }} /> Specific Medical Condition Details & Care Instructions
+                      </div>
+                      {isEditing ? (
+                        <textarea rows={3} value={editForm.medical_conditions || ''} onChange={e => setEditForm({ ...editForm, medical_conditions: e.target.value })} placeholder="Please provide specific details: asthma, medications, dietary restrictions, mobility needs..." style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #f87171', borderRadius: '6px', fontSize: '12.5px', boxSizing: 'border-box', background: '#ffffff', color: '#0f172a' }} />
+                      ) : (
+                        <div style={{ color: '#7f1d1d', lineHeight: 1.5, fontSize: '12.5px', fontWeight: '600' }}>
+                          {selectedStudentProfile.medical_conditions || selectedStudentProfile.med_details || 'Reported "Yes" without specific description.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 6. Payment Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CreditCard size={14} style={{ color: '#8b5cf6' }} /> 6. Payment Information
+                </h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12.5px' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Payment Status</div>
+                    {isEditing ? (
+                      <select value={editForm.payment_status || 'pending'} onChange={e => setEditForm({ ...editForm, payment_status: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
                         <option value="pending">Pending</option>
                         <option value="submitted">Submitted</option>
                         <option value="verified">Verified</option>
                       </select>
                     ) : (
                       <div style={{ marginTop: '3px' }}>
-                        <span style={{ fontWeight: '750', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', textTransform: 'capitalize', background: selectedStudentProfile.payment_status === 'verified' ? '#dcfce7' : '#fef3c7', color: selectedStudentProfile.payment_status === 'verified' ? '#166534' : '#92400e' }}>
+                        <span style={{
+                          fontWeight: '750',
+                          fontSize: '11px',
+                          padding: '3px 9px',
+                          borderRadius: '4px',
+                          textTransform: 'capitalize',
+                          background: selectedStudentProfile.payment_status === 'verified' ? '#dcfce7' : (selectedStudentProfile.payment_status === 'submitted' ? '#eff6ff' : '#fef3c7'),
+                          color: selectedStudentProfile.payment_status === 'verified' ? '#166534' : (selectedStudentProfile.payment_status === 'submitted' ? '#1d4ed8' : '#92400e')
+                        }}>
                           {selectedStudentProfile.payment_status || 'Pending'}
                         </span>
                       </div>
                     )}
                   </div>
+
                   <div>
-                    <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Parent Consent</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Payment Screenshot / Receipt
+                    </div>
+                    {(selectedStudentProfile.payment_screenshot_url || editForm.payment_screenshot_url) ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <a
+                          href={editForm.payment_screenshot_url || selectedStudentProfile.payment_screenshot_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 12px',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            borderRadius: '6px',
+                            fontWeight: '700',
+                            fontSize: '12px',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <ExternalLink size={13} /> View Existing Receipt
+                        </a>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>No payment receipt attached.</div>
+                    )}
+
+                    {isEditing && (
+                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => receiptFileInputRef.current?.click()}
+                          disabled={isUploadingReceipt}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '650',
+                            color: '#334155',
+                            cursor: isUploadingReceipt ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Upload size={13} /> {isUploadingReceipt ? 'Uploading…' : 'Upload / Replace Receipt File'}
+                        </button>
+                        <input
+                          type="text"
+                          value={editForm.payment_screenshot_url || ''}
+                          onChange={e => setEditForm({ ...editForm, payment_screenshot_url: e.target.value })}
+                          placeholder="Or paste receipt URL / Google Drive link"
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '11.5px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 7. Parent Consent & Digital Signature */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileCheck size={14} style={{ color: '#16a34a' }} /> 7. Consent & Digital Signature
+                </h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12.5px' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Consent Status</div>
                     {isEditing ? (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={editForm.parent_consent_confirmed} onChange={e => setEditForm({ ...editForm, parent_consent_confirmed: e.target.checked })} />
-                        <span>Consent Confirmed</span>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', cursor: 'pointer', fontWeight: '700' }}>
+                        <input type="checkbox" checked={Boolean(editForm.parent_consent_confirmed)} onChange={e => setEditForm({ ...editForm, parent_consent_confirmed: e.target.checked })} />
+                        <span>Parent / Guardian Consent Confirmed</span>
                       </label>
                     ) : (
                       <div style={{ marginTop: '3px' }}>
-                        <span style={{ fontWeight: '750', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', textTransform: 'capitalize', background: selectedStudentProfile.parent_consent_confirmed ? '#eff6ff' : '#f1f5f9', color: selectedStudentProfile.parent_consent_confirmed ? '#1d4ed8' : '#64748b' }}>
-                          {selectedStudentProfile.parent_consent_confirmed ? 'Confirmed' : 'Pending'}
+                        <span style={{ fontWeight: '750', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: selectedStudentProfile.parent_consent_confirmed ? '#dcfce7' : '#f1f5f9', color: selectedStudentProfile.parent_consent_confirmed ? '#166534' : '#64748b' }}>
+                          {selectedStudentProfile.parent_consent_confirmed ? '✓ Confirmed by Parent' : 'Pending Confirmation'}
                         </span>
                       </div>
                     )}
                   </div>
-                  {selectedStudentProfile.payment_screenshot_url && (
-                    <div>
-                      <a href={selectedStudentProfile.payment_screenshot_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <ExternalLink size={12} /> View Payment Receipt
-                      </a>
+
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Digital Signature
                     </div>
-                  )}
+                    {(selectedStudentProfile.digital_signature_url || editForm.digital_signature_url) ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <a
+                          href={editForm.digital_signature_url || selectedStudentProfile.digital_signature_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 12px',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            color: '#166534',
+                            borderRadius: '6px',
+                            fontWeight: '700',
+                            fontSize: '12px',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <ExternalLink size={13} /> View Digital Signature
+                        </a>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>No digital signature attached.</div>
+                    )}
+
+                    {isEditing && (
+                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => signatureFileInputRef.current?.click()}
+                          disabled={isUploadingSignature}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '650',
+                            color: '#334155',
+                            cursor: isUploadingSignature ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Upload size={13} /> {isUploadingSignature ? 'Uploading…' : 'Upload / Replace Signature File'}
+                        </button>
+                        <input
+                          type="text"
+                          value={editForm.digital_signature_url || ''}
+                          onChange={e => setEditForm({ ...editForm, digital_signature_url: e.target.value })}
+                          placeholder="Or paste signature URL / Google Drive link"
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '11.5px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Collapsible Consent Declaration */}
+                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowFullConsentText(!showFullConsentText)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#475569',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {showFullConsentText ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      {showFullConsentText ? 'Hide Consent Declaration' : 'View Consent Declaration Text'}
+                    </button>
+                    {showFullConsentText && (
+                      <div style={{ marginTop: '8px' }}>
+                        {isEditing ? (
+                          <textarea
+                            rows={4}
+                            value={editForm.parent_consent_text || ''}
+                            onChange={e => setEditForm({ ...editForm, parent_consent_text: e.target.value })}
+                            style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '11px', lineHeight: 1.4, boxSizing: 'border-box', background: '#ffffff' }}
+                          />
+                        ) : (
+                          <div style={{ maxHeight: '140px', overflowY: 'auto', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px 10px', fontSize: '11px', lineHeight: 1.45, color: '#475569', whiteSpace: 'pre-line' }}>
+                            {selectedStudentProfile.parent_consent_text || DEFAULT_LAP_CONSENT_TEXT}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 8. Additional Registration Information */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', gridColumn: '1 / -1' }}>
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Layers size={14} style={{ color: '#475569' }} /> 8. Additional Registration & System Information
+                </h5>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '12px' }}>
+                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Database Record ID</div>
+                    <div style={{ fontFamily: 'monospace', fontWeight: '750', color: '#0f172a', marginTop: '2px' }}>#{selectedStudentProfile.id}</div>
+                  </div>
+                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Current Batch Allocation</div>
+                    <div style={{ fontWeight: '700', color: selectedStudentProfile.batch_name ? '#15803d' : '#94a3b8', marginTop: '2px' }}>
+                      {selectedStudentProfile.batch_name || 'Not Enrolled in Batch'}
+                    </div>
+                  </div>
+                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Squad & Room</div>
+                    <div style={{ fontWeight: '700', color: '#334155', marginTop: '2px' }}>
+                      Squad: {selectedStudentProfile.squad || '—'} | Room: {selectedStudentProfile.room || '—'}
+                    </div>
+                  </div>
+                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Registration Date</div>
+                    <div style={{ fontWeight: '700', color: '#334155', marginTop: '2px' }}>
+                      {selectedStudentProfile.created_at ? new Date(selectedStudentProfile.created_at).toLocaleDateString() : '—'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Footer Controls */}
             {isEditing && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', marginTop: '4px' }}>
                 <button
                   type="button"
                   className="btn btn-outline"
                   onClick={() => setIsEditing(false)}
-                  style={{ padding: '8px 16px', borderRadius: '8px', background: '#ffffff', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                  style={{ padding: '9px 18px', borderRadius: '8px', background: '#ffffff', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '650', fontSize: '13px' }}
                 >
                   Cancel
                 </button>
@@ -1218,16 +1628,22 @@ export default function StudentsModule({
                   type="submit"
                   disabled={isSavingAccount}
                   style={{
-                    padding: '8px 20px',
+                    padding: '9px 24px',
                     borderRadius: '8px',
                     background: primaryOrange,
                     color: '#ffffff',
                     border: 'none',
-                    fontWeight: '700',
-                    cursor: isSavingAccount ? 'not-allowed' : 'pointer'
+                    fontWeight: '750',
+                    fontSize: '13px',
+                    cursor: isSavingAccount ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(234, 88, 12, 0.25)'
                   }}
                 >
-                  {isSavingAccount ? 'Saving…' : 'Save Changes'}
+                  {isSavingAccount ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                  {isSavingAccount ? 'Saving Changes…' : 'Save Changes'}
                 </button>
               </div>
             )}

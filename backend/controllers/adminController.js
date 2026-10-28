@@ -705,8 +705,10 @@ const processLifeAwakeningStudentUploadJob = async (
               nominee_name = COALESCE($18, nominee_name),
               nominee_relationship = COALESCE($19, nominee_relationship),
               prn = CASE WHEN $20::text IS NOT NULL THEN $20::text ELSE prn END,
-              roll_number = COALESCE($21, roll_number)
-             WHERE id = $22`,
+              roll_number = COALESCE($21, roll_number),
+              parent_email = COALESCE($22, parent_email),
+              personal_email = COALESCE($23, personal_email)
+             WHERE id = $24`,
             [
               cleanStr(r.school, 255),
               cleanStr(r.school_branch, 255),
@@ -729,13 +731,19 @@ const processLifeAwakeningStudentUploadJob = async (
               cleanStr(r.nominee_relationship, 100),
               safePrn,
               rawRollNo,
+              p1,
+              p2,
               studentId
             ]
           );
           success++;
         }
       } else {
-        const internalEmail = `student_${Date.now()}_${Math.random().toString(36).substring(2, 8)}@lifeawakening.internal`;
+        // Canonical Student Record:
+        // Life Awakening does not collect or generate separate student email addresses.
+        // Parent emails (Email Address 1 and Email Address 2) are preserved in parent_email and personal_email,
+        // and mapped to authenticating parent accounts via parent_students table.
+        const studentEmail = null;
         const insertRes = await client.query(
           `INSERT INTO users (
             name, email, role, class_grade, school, school_branch, division,
@@ -743,18 +751,20 @@ const processLifeAwakeningStudentUploadJob = async (
             has_medical_condition, medical_conditions, known_allergies,
             payment_screenshot_url, payment_status, digital_signature_url,
             parent_consent_text, parent_consent_confirmed,
-            nominee_name, nominee_relationship, prn, roll_number, status, password
+            nominee_name, nominee_relationship, prn, roll_number, status, password,
+            parent_email, personal_email
           ) VALUES (
             $1, $2, 'student', $3, $4, $5, $6,
             $7, $8, $9, $10, $11, $12, $13,
             $14, $15, $16,
             $17, $18, $19,
             $20, $21,
-            $22, $23, $24, $25, 'active', $26
+            $22, $23, $24, $25, 'active', $26,
+            $27, $28
           ) RETURNING id`,
           [
             studentName,
-            internalEmail,
+            studentEmail,
             canonicalClass,
             cleanStr(r.school, 255),
             cleanStr(r.school_branch, 255),
@@ -778,7 +788,9 @@ const processLifeAwakeningStudentUploadJob = async (
             cleanStr(r.nominee_relationship, 100),
             safePrn,
             rawRollNo,
-            defaultParentHash
+            defaultParentHash,
+            p1,
+            p2
           ]
         );
         studentId = insertRes.rows[0].id;
@@ -843,6 +855,12 @@ const processLifeAwakeningStudentUploadJob = async (
           const currentCount = capCheck.rows[0].count;
           const limit = targetBatch.capacity || 350;
           if (currentCount < limit) {
+            const uCheck = await client.query('SELECT system_student_id FROM users WHERE id = $1', [studentId]);
+            if (!uCheck.rows[0]?.system_student_id) {
+              const { generateNextSystemStudentId } = require('../utils/studentIdHelper');
+              const nextSysId = await generateNextSystemStudentId(client, targetBatch.id);
+              await client.query('UPDATE users SET system_student_id = $1 WHERE id = $2', [nextSysId, studentId]);
+            }
             const barcode = `LA-${targetBatch.id}-${studentId}-${Math.floor(Math.random() * 10000)}`;
             await client.query(
               `INSERT INTO batch_students (batch_id, student_id, barcode)
@@ -1691,7 +1709,13 @@ const processUploadJobInBackground = async (
                 const studentValueRows = [];
                 let studentParamIdx = 1;
 
+                const { generateNextSystemStudentId } = require('../utils/studentIdHelper');
                 for (const s of studentsToInsert) {
+                  const uCheck = await client.query('SELECT system_student_id FROM users WHERE id = $1', [s.id]);
+                  if (!uCheck.rows[0]?.system_student_id) {
+                    const nextSysId = await generateNextSystemStudentId(client, batchId);
+                    await client.query('UPDATE users SET system_student_id = $1 WHERE id = $2', [nextSysId, s.id]);
+                  }
                   const barcode = `LTC-${batchId}-${s.id}-${Math.floor(Math.random() * 10000)}`;
                   const origRecord = chunk.find(r => r._email === s.email || r._prn === s.prn);
                   const room = origRecord ? origRecord.room : null;
@@ -1949,9 +1973,18 @@ const getStudents = async (req, res) => {
     let paramIdx = 1;
 
     if (search) {
-      whereClause += ` AND (u.name ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx} OR u.prn ILIKE $${paramIdx})`;
-      params.push(`%${search}%`);
-      paramIdx++;
+      const cleanSearch = search.trim();
+      const legacyMatch = cleanSearch.match(/^LA-0*(\d+)$/i);
+      const legacyId = legacyMatch ? parseInt(legacyMatch[1], 10) : null;
+      if (legacyId) {
+        whereClause += ` AND (u.id = $${paramIdx} OR u.system_student_id ILIKE $${paramIdx + 1} OR u.name ILIKE $${paramIdx + 1} OR u.email ILIKE $${paramIdx + 1} OR u.prn ILIKE $${paramIdx + 1})`;
+        params.push(legacyId, `%${cleanSearch}%`);
+        paramIdx += 2;
+      } else {
+        whereClause += ` AND (u.system_student_id ILIKE $${paramIdx} OR u.name ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx} OR u.prn ILIKE $${paramIdx})`;
+        params.push(`%${cleanSearch}%`);
+        paramIdx++;
+      }
     }
     if (division) {
       if (division === 'UNASSIGNED') {
@@ -1990,12 +2023,22 @@ const getStudents = async (req, res) => {
     const total = parseInt(countRes.rows[0].count);
 
     const dataRes = await pool.query(
-      `SELECT u.id, u.name, u.email, u.role, u.department, u.semester, u.division, u.school, u.panel, u.faculty, u.prn, u.phone, u.gender, u.nri, u.status,
+      `SELECT u.id, u.system_student_id, u.name, 
+              CASE WHEN u.email LIKE '%@lifeawakening.internal' THEN NULL ELSE u.email END as email,
+              u.role, u.department, u.semester, u.division, u.school, u.panel, u.faculty, u.prn, u.phone, u.gender, u.nri, u.status,
               u.tshirt_size, u.photo_video_consent, u.tshirt_consent, u.data_consent, u.bag_check_consent,
               (i.prn IS NOT NULL) as insured, u.undertaking_submitted, u.undertaking_signed_name, u.undertaking_signed_date,
               u.school_branch, u.class_grade, u.has_medical_condition, u.payment_screenshot_url, u.payment_status,
               u.payment_verified_at, u.payment_verified_by, u.digital_signature_url, u.parent_consent_confirmed,
-              u.parent_consent_text, u.blood_group, u.roll_number, u.parent_mobile, u.parent_email,
+              u.parent_consent_text, u.blood_group, u.roll_number, u.parent_mobile, 
+              COALESCE(
+                (SELECT p.email FROM parent_students ps JOIN users p ON ps.parent_id = p.id WHERE ps.student_id = u.id AND ps.is_primary = true LIMIT 1),
+                u.parent_email
+              ) as parent_email,
+              COALESCE(
+                (SELECT p.email FROM parent_students ps JOIN users p ON ps.parent_id = p.id WHERE ps.student_id = u.id AND ps.is_primary = false LIMIT 1),
+                u.personal_email
+              ) as personal_email,
               u.emergency_contact_alt_mobile, u.medical_conditions, u.known_allergies, u.address
        FROM users u
        LEFT JOIN insurance i ON u.prn = i.prn
@@ -2220,27 +2263,27 @@ const sendOrientationEmail = async (req, res) => {
 
     if (roles.includes('student')) {
       queries.push(`
-        SELECT u.id, u.name, u.email, u.role, bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'student' as sub_role, bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
-        WHERE bs.batch_id = $1
+        WHERE bs.batch_id = $1 AND u.email IS NOT NULL AND TRIM(u.email) != '' AND u.email NOT LIKE '%@lifeawakening.internal'
       `);
     }
 
     if (roles.includes('faculty')) {
       queries.push(`
-        SELECT u.id, u.name, u.email, u.role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'faculty' as sub_role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_faculty bf
         JOIN users u ON bf.faculty_id = u.id
         JOIN batches b ON bf.batch_id = b.id
-        WHERE bf.batch_id = $1 AND (u.role IS NULL OR u.role != 'ltc_member')
+        WHERE bf.batch_id = $1 AND (u.role IS NULL OR u.role != 'ltc_member') AND u.email IS NOT NULL AND TRIM(u.email) != ''
       `);
     }
 
     if (roles.includes('ltc_member')) {
       queries.push(`
-        SELECT u.id, u.name, u.email, u.role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'ltc_member' as sub_role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_faculty bf
         JOIN users u ON bf.faculty_id = u.id
         JOIN batches b ON bf.batch_id = b.id
@@ -2248,16 +2291,82 @@ const sendOrientationEmail = async (req, res) => {
           AND u.role = 'ltc_member' 
           AND bf.squad IS NOT NULL AND TRIM(bf.squad) != ''
           AND u.designation ILIKE '%Squad Coordinator%'
+          AND u.email IS NOT NULL AND TRIM(u.email) != ''
       `);
     }
 
-    if (roles.includes('parent')) {
+    if (roles.includes('parent_1') || roles.includes('parent')) {
       queries.push(`
-        SELECT u.id, CONCAT('Parent of ', u.name) as name, u.parent_email as email, 'parent' as role, bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id,
+               COALESCE(
+                 (
+                   SELECT pu.name FROM parent_students ps2 
+                   JOIN users pu ON ps2.parent_id = pu.id 
+                   WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+                   ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC LIMIT 1
+                 ),
+                 u.parent_name,
+                 u.name
+               ) as name,
+               u.name as student_name,
+               COALESCE(
+                 (
+                   SELECT pu.email FROM parent_students ps2 
+                   JOIN users pu ON ps2.parent_id = pu.id 
+                   WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+                   ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC LIMIT 1
+                 ),
+                 CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END
+               ) as email,
+               'parent' as role,
+               'parent_1' as sub_role,
+               bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
-        WHERE bs.batch_id = $1 AND u.parent_email IS NOT NULL AND TRIM(u.parent_email) != ''
+        WHERE bs.batch_id = $1 AND COALESCE(
+          (
+            SELECT pu.email FROM parent_students ps2 
+            JOIN users pu ON ps2.parent_id = pu.id 
+            WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+            ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC LIMIT 1
+          ),
+          CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END
+        ) IS NOT NULL
+      `);
+    }
+
+    if (roles.includes('parent_2')) {
+      queries.push(`
+        SELECT u.id,
+               COALESCE(
+                 (
+                   SELECT pu.name FROM parent_students ps2 
+                   JOIN users pu ON ps2.parent_id = pu.id 
+                   WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+                   ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC OFFSET 1 LIMIT 1
+                 ),
+                 u.name
+               ) as name,
+               u.name as student_name,
+               (
+                 SELECT pu.email FROM parent_students ps2 
+                 JOIN users pu ON ps2.parent_id = pu.id 
+                 WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+                 ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC OFFSET 1 LIMIT 1
+               ) as email,
+               'parent' as role,
+               'parent_2' as sub_role,
+               bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        FROM batch_students bs
+        JOIN users u ON bs.student_id = u.id
+        JOIN batches b ON bs.batch_id = b.id
+        WHERE bs.batch_id = $1 AND (
+          SELECT pu.email FROM parent_students ps2 
+          JOIN users pu ON ps2.parent_id = pu.id 
+          WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+          ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC OFFSET 1 LIMIT 1
+        ) IS NOT NULL
       `);
     }
 
@@ -2272,13 +2381,17 @@ const sendOrientationEmail = async (req, res) => {
       return res.status(400).json({ message: 'No recipients found for the selected roles in this batch.' });
     }
 
-    // Deduplicate recipients by email to guarantee single dispatch per recipient
+    // Deduplicate recipients by lowercase email to guarantee single dispatch per recipient
     const seenEmails = new Set();
     const uniqueUsers = [];
     for (const u of usersRes.rows) {
-      if (u.email && !seenEmails.has(u.email)) {
-        seenEmails.add(u.email);
-        uniqueUsers.push(u);
+      const cleanEmail = u.email ? u.email.trim().toLowerCase() : '';
+      if (cleanEmail && !cleanEmail.endsWith('@lifeawakening.internal') && !seenEmails.has(cleanEmail)) {
+        seenEmails.add(cleanEmail);
+        uniqueUsers.push({
+          ...u,
+          email: cleanEmail
+        });
       }
     }
 
@@ -2298,12 +2411,18 @@ const sendOrientationEmail = async (req, res) => {
         recipientBody = recipientBody.replace(/\n{3,}/g, '\n\n').trim();
       }
 
+      const studentName = u.student_name || u.name;
+      const greetingName = u.role === 'parent' ? `Parent/Guardian of ${studentName}` : u.name;
+
       // Function to replace placeholders
       const replaceVars = (str) => {
         const squadDisplay = (u.squad && u.squad !== 'LTC Admin') ? u.squad : 'Surya';
         const deadlineVal = req.body.deadline || (req.body.extraFieldValues && req.body.extraFieldValues.deadline) || '';
         let resStr = str
-          .replace(/{{name}}/g, u.name || '')
+          .replace(/Dear Parent\/Guardian of {{name}},/g, `Dear Parent/Guardian of ${studentName},`)
+          .replace(/Dear Parents\/Guardians,/g, `Dear Parent/Guardian of ${studentName},`)
+          .replace(/{{student_name}}/g, studentName)
+          .replace(/{{name}}/g, greetingName)
           .replace(/{{role}}/g, roleName)
           .replace(/{{batch_name}}/g, u.batch_name || '')
           .replace(/{{squad}}/g, squadDisplay)
@@ -2818,19 +2937,51 @@ const getOrientationRecipients = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(`
-      SELECT u.id, u.name, u.email, u.phone, u.parent_mobile, u.prn, u.panel, u.division, u.parent_email, u.role, bs.squad, b.name as batch_name
+      SELECT u.id, u.name, u.email, u.phone, u.parent_mobile, u.prn, u.panel, u.division, u.parent_email, u.role, bs.squad, b.name as batch_name,
+             COALESCE(
+               (
+                 SELECT pu.email FROM parent_students ps2 
+                 JOIN users pu ON ps2.parent_id = pu.id 
+                 WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+                 ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC LIMIT 1
+               ),
+               CASE WHEN u.parent_email NOT LIKE '%@lifeawakening.internal' THEN u.parent_email ELSE NULL END
+             ) AS parent_1_email,
+             COALESCE(
+               (
+                 SELECT pu.name FROM parent_students ps2 
+                 JOIN users pu ON ps2.parent_id = pu.id 
+                 WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+                 ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC LIMIT 1
+               ),
+               u.parent_name
+             ) AS parent_1_name,
+             (
+               SELECT pu.email FROM parent_students ps2 
+               JOIN users pu ON ps2.parent_id = pu.id 
+               WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+               ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC OFFSET 1 LIMIT 1
+             ) AS parent_2_email,
+             (
+               SELECT pu.name FROM parent_students ps2 
+               JOIN users pu ON ps2.parent_id = pu.id 
+               WHERE ps2.student_id = u.id AND pu.email NOT LIKE '%@lifeawakening.internal'
+               ORDER BY ps2.is_primary DESC NULLS LAST, ps2.created_at ASC NULLS LAST, pu.id ASC OFFSET 1 LIMIT 1
+             ) AS parent_2_name
       FROM batch_students bs
       JOIN users u ON bs.student_id = u.id
       JOIN batches b ON bs.batch_id = b.id
       WHERE bs.batch_id = $1
       UNION ALL
-      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, b.name as batch_name
+      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, b.name as batch_name,
+             NULL as parent_1_email, NULL as parent_1_name, NULL as parent_2_email, NULL as parent_2_name
       FROM batch_faculty bf
       JOIN users u ON bf.faculty_id = u.id
       JOIN batches b ON bf.batch_id = b.id
       WHERE bf.batch_id = $1 AND (u.role IS NULL OR u.role != 'ltc_member')
       UNION ALL
-      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, b.name as batch_name
+      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, b.name as batch_name,
+             NULL as parent_1_email, NULL as parent_1_name, NULL as parent_2_email, NULL as parent_2_name
       FROM batch_faculty bf
       JOIN users u ON bf.faculty_id = u.id
       JOIN batches b ON bf.batch_id = b.id
@@ -3513,9 +3664,18 @@ const getBatchStudents = async (req, res) => {
     }
 
     if (search) {
-      whereExtra += ` AND (u.name ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx} OR u.prn ILIKE $${paramIdx})`;
-      params.push(`%${search}%`);
-      paramIdx++;
+      const cleanSearch = search.trim();
+      const legacyMatch = cleanSearch.match(/^LA-0*(\d+)$/i);
+      const legacyId = legacyMatch ? parseInt(legacyMatch[1], 10) : null;
+      if (legacyId) {
+        whereExtra += ` AND (u.id = $${paramIdx} OR u.system_student_id ILIKE $${paramIdx + 1} OR u.name ILIKE $${paramIdx + 1} OR u.email ILIKE $${paramIdx + 1} OR u.prn ILIKE $${paramIdx + 1})`;
+        params.push(legacyId, `%${cleanSearch}%`);
+        paramIdx += 2;
+      } else {
+        whereExtra += ` AND (u.system_student_id ILIKE $${paramIdx} OR u.name ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx} OR u.prn ILIKE $${paramIdx})`;
+        params.push(`%${cleanSearch}%`);
+        paramIdx++;
+      }
     }
     if (division) {
       if (division === 'UNASSIGNED') {
@@ -3567,7 +3727,7 @@ const getBatchStudents = async (req, res) => {
     }
 
     const dataRes = await pool.query(
-      `SELECT u.id, u.name, u.email, u.prn, u.roll_number, u.class_grade, u.school_branch, u.parent_email,
+      `SELECT u.id, u.system_student_id, u.name, u.email, u.prn, u.roll_number, u.class_grade, u.school_branch, u.parent_email,
               u.is_locked, u.department, u.semester, u.school, u.division, u.gender, u.phone, u.parent_mobile, u.nri, u.red_flag, u.tshirt_size, u.jain_food, u.monday_fast,
               u.photo_video_consent, u.tshirt_consent, u.data_consent, u.bag_check_consent, u.undertaking_signed_date, u.undertaking_signed_name,
               bs.squad, bs.room, bs.barcode, bs.is_squad_leader, bs.is_dnr, bs.dnr_marked_at, bs.dnr_marked_by_name, bs.dnr_reason,
@@ -3600,7 +3760,7 @@ const getBatchStudentsExport = async (req, res) => {
     const batch = batchRes.rows[0];
 
     const studentsRes = await pool.query(
-      `SELECT u.id, u.name, u.email, u.prn, u.department, u.semester, u.school, u.division, u.panel,
+      `SELECT u.id, u.system_student_id, u.name, u.email, u.prn, u.department, u.semester, u.school, u.division, u.panel,
               u.gender, u.phone, u.dob, u.age, u.nationality, u.aadhar_no, u.salutation,
               u.first_name, u.middle_name, u.last_name, u.nominee_name, u.nominee_relationship,
               u.nominee_email, u.address, u.roll_number, u.parent_mobile, u.parent_email, u.faculty,
@@ -3693,6 +3853,8 @@ const getBatchStudentsExport = async (req, res) => {
 
       return {
         'Sr.No': index + 1,
+        'Student ID': s.system_student_id || s.prn || '',
+        'System Student ID': s.system_student_id || '',
         'PRN No': s.prn || '',
         'Salutation - Mr / Ms': salutation || '',
         'First Name ( As per Aadhar Card )': firstName || '',
@@ -3758,7 +3920,7 @@ const getBatchHardCopyPdf = async (req, res) => {
     const batch = batchRes.rows[0];
 
     const studentsRes = await pool.query(
-      `SELECT u.id, u.name, u.email, u.prn, u.gender, u.panel, u.division, u.school, u.department, bs.squad, bs.room,
+      `SELECT u.id, u.system_student_id, u.name, u.email, u.prn, u.gender, u.panel, u.division, u.school, u.department, bs.squad, bs.room,
               (CASE 
                 WHEN u.undertaking_submitted = true OR u.ri_undertaking_submitted = true THEN true
                 WHEN EXISTS (
@@ -5113,6 +5275,15 @@ const autoAllocateBatchRooms = async (req, res) => {
       if (!fs.existsSync(xlsxPath)) {
         xlsxPath = path.join(__dirname, '..', 'LTC Rooms Availability.xlsx');
       }
+      if (!fs.existsSync(xlsxPath)) {
+        xlsxPath = path.join(__dirname, 'LTC Rooms Availability.xlsx');
+      }
+      if (!fs.existsSync(xlsxPath)) {
+        xlsxPath = path.join(process.cwd(), 'LTC Rooms Availability.xlsx');
+      }
+      if (!fs.existsSync(xlsxPath)) {
+        xlsxPath = path.join(process.cwd(), 'backend', 'LTC Rooms Availability.xlsx');
+      }
       if (fs.existsSync(xlsxPath)) {
         const workbook = XLSX.readFile(xlsxPath);
         const sheetName = workbook.SheetNames[0];
@@ -5143,6 +5314,14 @@ const autoAllocateBatchRooms = async (req, res) => {
       }
     } catch (excelErr) {
       console.error('Error loading rooms Excel:', excelErr);
+    }
+
+    if (sinhgadRooms.length === 0 && pratapgadRooms.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Room allocation failed: "LTC Rooms Availability.xlsx" room configuration file is missing, unreadable, or contains no valid rooms. Please ensure the workbook is present and contains Sinhgad and Pratapgad room configurations.',
+        error: 'ROOMS_CONFIG_MISSING'
+      });
     }
 
     // Fetch unavailable rooms for this batch to exclude them from the room allocation pool
@@ -6563,18 +6742,25 @@ const getUserProfile = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT id, name, email, role, department, semester, division, school, panel, faculty,
-              is_primary, prn, faculty_id, phone, dob, gender, program, year,
-              designation, status, nri, red_flag,
-              undertaking_submitted, undertaking_signed_name, undertaking_signed_date,
-              salutation, first_name, middle_name, last_name, age, nationality,
-              aadhar_no, nominee_name, nominee_relationship, nominee_email,
-              address, roll_number, lateral_entry, parent_mobile, parent_email, personal_email,
-              school_branch, class_grade, has_medical_condition, payment_screenshot_url,
-              payment_status, payment_verified_at, payment_verified_by, digital_signature_url,
-              parent_consent_text, parent_consent_confirmed, blood_group, known_allergies,
-              medical_conditions, emergency_contact_alt_mobile
-       FROM users WHERE id = $1`,
+      `SELECT u.id, u.system_student_id, u.name, u.email, u.role, u.department, u.semester, u.division, u.school, u.panel, u.faculty,
+              u.is_primary, u.prn, u.faculty_id, u.phone, u.dob, u.gender, u.program, u.year,
+              u.designation, u.status, u.nri, u.red_flag,
+              u.undertaking_submitted, u.undertaking_signed_name, u.undertaking_signed_date,
+              u.salutation, u.first_name, u.middle_name, u.last_name, u.age, u.nationality,
+              u.aadhar_no, u.nominee_name, u.nominee_relationship, u.nominee_email,
+              COALESCE(u.parent_name, u.nominee_name) as parent_name,
+              COALESCE(u.parent_relationship, u.nominee_relationship) as parent_relationship,
+              u.address, u.roll_number, u.lateral_entry, u.parent_mobile, u.parent_email, u.personal_email,
+              u.school_branch, u.class_grade, u.has_medical_condition, u.payment_screenshot_url,
+              u.payment_status, u.payment_verified_at, u.payment_verified_by, u.digital_signature_url,
+              u.parent_consent_text, u.parent_consent_confirmed, u.blood_group, u.known_allergies,
+              COALESCE(u.medical_conditions, u.med_details) as medical_conditions,
+              u.med_details, u.emergency_contact_alt_mobile, u.squad, u.room, u.created_at,
+              b.id as batch_id, b.name as batch_name
+       FROM users u
+       LEFT JOIN batch_students bs ON bs.student_id = u.id
+       LEFT JOIN batches b ON b.id = bs.batch_id
+       WHERE u.id = $1`,
       [id]
     );
     if (result.rowCount === 0) return res.status(404).json({ message: 'User not found' });
@@ -6596,7 +6782,12 @@ const getUserProfile = async (req, res) => {
       user.parents = parentsRes.rows;
       user.parent1_email = parentsRes.rows[0]?.email || user.parent_email || '';
       user.parent2_email = parentsRes.rows[1]?.email || '';
-      user.student_display_id = `LA-${String(user.id).padStart(5, '0')}`;
+      user.parent_name = user.parent_name || parentsRes.rows[0]?.name || user.nominee_name || '';
+      user.parent_relationship = user.parent_relationship || parentsRes.rows[0]?.relationship || user.nominee_relationship || '';
+      user.parent1_name = parentsRes.rows[0]?.name || user.parent_name || '';
+      user.parent2_name = parentsRes.rows[1]?.name || '';
+      user.student_display_id = user.system_student_id || `LA-${String(user.id).padStart(5, '0')}`;
+      user.student_id = user.system_student_id || `LA-${String(user.id).padStart(5, '0')}`;
     }
     res.json({ user });
   } catch (err) {
@@ -6626,20 +6817,45 @@ const updateUserProfile = async (req, res) => {
     let cleanEmail = undefined;
     if (req.body.email !== undefined) {
       if (req.body.email === null || String(req.body.email).trim() === '') {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'Email address cannot be empty.' });
+        if (studentRecord.role === 'student') {
+          cleanEmail = null;
+        } else {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ message: 'Email address cannot be empty.' });
+        }
+      } else {
+        cleanEmail = String(req.body.email).trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(cleanEmail)) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ message: `Invalid email format: "${cleanEmail}"` });
+        }
+        const dupCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = $1 AND id != $2", [cleanEmail, id]);
+        if (dupCheck.rowCount > 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ message: 'Email is already in use by another user.' });
+        }
       }
-      cleanEmail = String(req.body.email).trim().toLowerCase();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(cleanEmail)) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ message: `Invalid email format: "${cleanEmail}"` });
-      }
-      const dupCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = $1 AND id != $2", [cleanEmail, id]);
-      if (dupCheck.rowCount > 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'Email is already in use by another user.' });
-      }
+    }
+
+    // Synchronize aliases across parent and medical fields
+    if (req.body.parent_name !== undefined) {
+      req.body.nominee_name = req.body.parent_name;
+    }
+    if (req.body.parent_relationship !== undefined) {
+      req.body.nominee_relationship = req.body.parent_relationship;
+    }
+    if (req.body.nominee_name !== undefined && req.body.parent_name === undefined) {
+      req.body.parent_name = req.body.nominee_name;
+    }
+    if (req.body.nominee_relationship !== undefined && req.body.parent_relationship === undefined) {
+      req.body.parent_relationship = req.body.nominee_relationship;
+    }
+    if (req.body.medical_conditions !== undefined && req.body.med_details === undefined) {
+      req.body.med_details = req.body.medical_conditions;
+    }
+    if (req.body.med_details !== undefined && req.body.medical_conditions === undefined) {
+      req.body.medical_conditions = req.body.med_details;
     }
 
     // ── Dedicated Life Awakening Parent Email Updates ──
@@ -6647,7 +6863,7 @@ const updateUserProfile = async (req, res) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const defaultParentHash = await bcrypt.hash('student123', 10);
       const studentPhone = studentRecord.phone || req.body.phone || req.body.parent_mobile || null;
-      const studentEmail = (cleanEmail !== undefined ? cleanEmail : studentRecord.email || '').toLowerCase().trim();
+      const studentEmail = (cleanEmail ? cleanEmail : (studentRecord.email || '')).toLowerCase().trim();
 
       let p1Input = req.body.parent1_email !== undefined ? req.body.parent1_email : req.body.parent_email;
       let p2Input = req.body.parent2_email;
@@ -6669,7 +6885,7 @@ const updateUserProfile = async (req, res) => {
         return res.status(400).json({ message: 'Parent 1 and Parent 2 cannot have the same email address.' });
       }
 
-      if ((p1Clean && p1Clean === studentEmail) || (p2Clean && p2Clean === studentEmail)) {
+      if (studentEmail && ((p1Clean && p1Clean === studentEmail) || (p2Clean && p2Clean === studentEmail))) {
         await client.query('ROLLBACK');
         return res.status(400).json({ message: 'Parent email cannot be the same as the student email address.' });
       }
@@ -6709,7 +6925,7 @@ const updateUserProfile = async (req, res) => {
             await client.query('DELETE FROM parent_students WHERE student_id = $1 AND parent_id = $2', [id, currP1.parent_id]);
             targetP1Id = null;
           }
-        } else if (!currP1 || currP1.email.toLowerCase() !== p1Clean) {
+        } else if (!currP1 || !currP1.email || currP1.email.toLowerCase() !== p1Clean) {
           const existingUserRes = await client.query('SELECT id, role FROM users WHERE LOWER(TRIM(email)) = $1', [p1Clean]);
           if (existingUserRes.rowCount > 0) {
             targetP1Id = existingUserRes.rows[0].id;
@@ -6786,7 +7002,7 @@ const updateUserProfile = async (req, res) => {
           if (currP2) {
             await client.query('DELETE FROM parent_students WHERE student_id = $1 AND parent_id = $2', [id, currP2.parent_id]);
           }
-        } else if (!currP2 || currP2.email.toLowerCase() !== p2Clean) {
+        } else if (!currP2 || !currP2.email || currP2.email.toLowerCase() !== p2Clean) {
           const existingUserRes = await client.query('SELECT id, role FROM users WHERE LOWER(TRIM(email)) = $1', [p2Clean]);
           let targetP2Id;
           if (existingUserRes.rowCount > 0) {
@@ -6867,7 +7083,8 @@ const updateUserProfile = async (req, res) => {
       'emergency_contact_name', 'emergency_contact_mobile', 'emergency_contact_relation',
       'emergency_contact_alt_mobile', 'blood_group', 'medical_conditions', 'known_allergies',
       'school_branch', 'class_grade', 'has_medical_condition', 'payment_screenshot_url',
-      'payment_status', 'digital_signature_url', 'parent_consent_text'
+      'payment_status', 'digital_signature_url', 'parent_consent_text',
+      'parent_name', 'parent_relationship', 'med_details'
     ];
 
     if (cleanEmail !== undefined) {
@@ -6976,6 +7193,32 @@ const updateUserProfile = async (req, res) => {
     res.status(500).json({ message: 'Server error during profile update', error: err.message });
   } finally {
     client.release();
+  }
+};
+
+const uploadAdminFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded.' });
+    }
+    const uploadsDir = path.join(__dirname, '../uploads/documents');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const ext = path.extname(req.file.originalname) || '.png';
+    const safeName = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+    const filePath = path.join(uploadsDir, safeName);
+    fs.writeFileSync(filePath, req.file.buffer);
+    const fileUrl = `/api/uploads/documents/${safeName}`;
+    res.json({
+      success: true,
+      url: fileUrl,
+      filename: safeName,
+      originalname: req.file.originalname
+    });
+  } catch (err) {
+    console.error('uploadAdminFile error:', err);
+    res.status(500).json({ message: 'File upload failed: ' + err.message });
   }
 };
 
@@ -8733,20 +8976,21 @@ const getBatchAbsenteesSnapshot = async (req, res) => {
       [batchId]
     );
 
-    // Check if Day 5 attendance has been recorded, or batch is completed / ended
-    const day5Check = await pool.query(
+    // Check if Day 4 attendance has been recorded, or batch is completed / ended
+    const day4Check = await pool.query(
       `SELECT (
-        EXISTS (SELECT 1 FROM attendance WHERE batch_id = $1 AND day = 5)
+        EXISTS (SELECT 1 FROM attendance WHERE batch_id = $1 AND day = 4)
         OR EXISTS (SELECT 1 FROM batches WHERE id = $1 AND (status = 'completed' OR (end_date IS NOT NULL AND CURRENT_DATE >= end_date)))
-      ) as is_day5_ended`,
+      ) as is_day4_ended`,
       [batchId]
     );
-    const isDay5Ended = Boolean(day5Check.rows[0]?.is_day5_ended);
+    const isDay4Ended = Boolean(day4Check.rows[0]?.is_day4_ended);
+    const isDay5Ended = isDay4Ended; // Backward compatibility alias
 
     if (result.rowCount === 0) {
       // Dynamic Absentee Rule:
       // Criteria 1: Marked as DNR (Did Not Report) by Squad Coordinator (Permanent absentee from Day 1)
-      // Criteria 2: Went to LTC, but at the end of Day 5, attendance < 30%
+      // Criteria 2: Went to LTC, but at the end of Day 4, attendance < 30%
       const liveAbsentRes = await pool.query(
         `SELECT 
            u.id, u.prn, u.name, u.email, u.phone, u.gender, u.school, u.faculty, u.department, u.division, u.panel, bs.squad,
@@ -8765,7 +9009,7 @@ const getBatchAbsenteesSnapshot = async (req, res) => {
            FROM (
              SELECT student_id, status, pillar, day
              FROM attendance
-             WHERE batch_id = $1
+             WHERE batch_id = $1 AND (day IS NULL OR day <= 4)
              UNION ALL
              SELECT student_id, status, 'session_' || session_id as pillar, 1 as day
              FROM attendance_records_v2
@@ -8777,7 +9021,7 @@ const getBatchAbsenteesSnapshot = async (req, res) => {
            AND (
              -- Criteria 1: Marked as DNR by squad coordinator (Always included from Day 1)
              bs.is_dnr = true
-             -- Criteria 2: Went to LTC, but attendance < 30% at the end of Day 5
+             -- Criteria 2: Went to LTC, but attendance < 30% at the end of Day 4
              OR (
                $2 = true 
                AND (
@@ -8787,7 +9031,7 @@ const getBatchAbsenteesSnapshot = async (req, res) => {
              )
            )
          ORDER BY bs.is_dnr DESC, u.name ASC`,
-        [batchId, isDay5Ended]
+        [batchId, isDay4Ended]
       );
 
       // Also get attendance metrics for all students in this batch who have tracked attendance
@@ -8809,7 +9053,7 @@ const getBatchAbsenteesSnapshot = async (req, res) => {
            FROM (
              SELECT student_id, status, pillar, day
              FROM attendance
-             WHERE batch_id = $1
+             WHERE batch_id = $1 AND (day IS NULL OR day <= 4)
              UNION ALL
              SELECT student_id, status, 'session_' || session_id as pillar, 1 as day
              FROM attendance_records_v2
@@ -9408,5 +9652,6 @@ module.exports = {
   saveCommunicationTemplate,
   restoreCommunicationTemplateDefault,
   processLifeAwakeningStudentUploadJob,
-  detectTemplateType
+  detectTemplateType,
+  uploadAdminFile
 };

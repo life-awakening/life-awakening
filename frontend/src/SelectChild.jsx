@@ -99,24 +99,88 @@ export default function SelectChild() {
   };
 
   const formatStudentId = (child) => {
+    if (child.system_student_id) return child.system_student_id;
     if (child.student_id) return child.student_id;
-    return `LA-${String(child.id).padStart(5, '0')}`;
+    return `LAP-${String(child.id).padStart(5, '0')}`;
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#f8fafc',
+      backgroundColor: '#05070B',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      color: '#0f172a'
+      color: '#0f172a',
+      boxSizing: 'border-box'
     }}>
+      <style>{`
+        .select-child-card {
+          background-color: #faf7f2;
+          border: 1px solid #e8e2d8;
+          border-radius: 14px;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          box-sizing: border-box;
+          min-width: 0;
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+          transition: border-color 0.18s ease, transform 0.18s ease;
+        }
+        .select-child-card:hover {
+          border-color: #d1c7b7;
+          transform: translateY(-2px);
+        }
+        .select-child-btn {
+          width: 100%;
+          background-color: #2563eb;
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          padding: 11px 16px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: background-color 0.15s ease;
+        }
+        .select-child-btn:hover {
+          background-color: #1d4ed8;
+        }
+        .select-child-signout-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background-color: #0b0f17;
+          border: 1px solid #1e293b;
+          border-radius: 8px;
+          padding: 7px 14px;
+          font-size: 13px;
+          font-weight: 500;
+          color: #94a3b8;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .select-child-signout-btn:hover {
+          background-color: #1e293b;
+          border-color: #334155;
+          color: #f8fafc;
+        }
+        @keyframes spinSlow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* ── Top Header Bar ── */}
       <header style={{
-        backgroundColor: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        padding: isMobile ? '12px 16px' : '16px 24px',
+        backgroundColor: '#05070B',
+        borderBottom: '1px solid #1e293b',
+        padding: isMobile ? '12px 16px' : '14px 28px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -129,7 +193,7 @@ export default function SelectChild() {
             src="/ltc.png"
             alt="Life Transformation Center"
             style={{
-              height: isMobile ? '36px' : '44px',
+              height: isMobile ? '34px' : '40px',
               width: 'auto',
               objectFit: 'contain'
             }}
@@ -138,32 +202,9 @@ export default function SelectChild() {
 
         <button
           onClick={handleLogout}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: '600',
-            color: '#475569',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f1f5f9';
-            e.currentTarget.style.borderColor = '#cbd5e1';
-            e.currentTarget.style.color = '#0f172a';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff';
-            e.currentTarget.style.borderColor = '#e2e8f0';
-            e.currentTarget.style.color = '#475569';
-          }}
+          className="select-child-signout-btn"
         >
-          <LogOut size={15} />
+          <LogOut size={14} />
           <span>Sign Out</span>
         </button>
       </header>
@@ -171,28 +212,29 @@ export default function SelectChild() {
       {/* ── Main Content Area ── */}
       <main style={{
         flex: 1,
-        maxWidth: '920px',
+        maxWidth: children.length > 2 ? '1100px' : '820px',
         width: '100%',
         margin: '0 auto',
-        padding: isMobile ? '20px 14px 40px' : '36px 20px 60px',
+        padding: isMobile ? '28px 16px 40px' : '44px 24px 60px',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box'
       }}>
         {/* Page Title & Subtitle */}
-        <div style={{ textAlign: 'center', marginBottom: isMobile ? '20px' : '32px' }}>
-          <h2 style={{
-            fontSize: isMobile ? '21px' : '26px',
-            fontWeight: '800',
-            color: '#0f172a',
-            margin: '0 0 6px 0',
-            letterSpacing: '-0.5px'
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '32px' }}>
+          <h1 style={{
+            fontSize: isMobile ? '22px' : '26px',
+            fontWeight: '700',
+            color: '#ffffff',
+            margin: '0 0 8px 0',
+            letterSpacing: '-0.3px',
+            lineHeight: 1.25
           }}>
-            Select Student
-          </h2>
+            Select <span style={{ color: '#ea580c' }}>Student</span>
+          </h1>
           <p style={{
-            fontSize: isMobile ? '13px' : '15px',
-            color: '#64748b',
+            fontSize: isMobile ? '13px' : '14px',
+            color: '#94a3b8',
             margin: 0,
             maxWidth: '520px',
             marginInline: 'auto',
@@ -205,116 +247,123 @@ export default function SelectChild() {
         {/* Loading State */}
         {loading && children.length === 0 ? (
           <div style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: '#faf7f2',
             borderRadius: '14px',
-            padding: '60px 20px',
+            padding: '50px 20px',
             textAlign: 'center',
-            border: '1px solid #e2e8f0'
+            border: '1px solid #e8e2d8',
+            maxWidth: '440px',
+            margin: '0 auto',
+            width: '100%',
+            boxShadow: '0 4px 18px rgba(0, 0, 0, 0.28)'
           }}>
             <div style={{
-              width: '36px',
-              height: '36px',
-              border: '3px solid #fed7aa',
-              borderTopColor: '#ea580c',
+              width: '32px',
+              height: '32px',
+              border: '2px solid #e2dacd',
+              borderTopColor: '#2563eb',
               borderRadius: '50%',
-              margin: '0 auto 16px',
-              animation: 'spin 0.9s linear infinite'
+              margin: '0 auto 14px',
+              animation: 'spinSlow 0.8s linear infinite'
             }} />
-            <p style={{ color: '#64748b', fontSize: '14px', fontWeight: '500', margin: 0 }}>
+            <p style={{ color: '#64748b', fontSize: '13.5px', margin: 0 }}>
               Loading student accounts...
             </p>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </div>
         ) : error && children.length === 0 ? (
           /* Error State */
           <div style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: '#faf7f2',
             border: '1px solid #fecaca',
             borderRadius: '14px',
             padding: '32px 24px',
             textAlign: 'center',
-            maxWidth: '480px',
+            maxWidth: '440px',
             margin: '0 auto',
-            width: '100%'
+            width: '100%',
+            boxShadow: '0 4px 18px rgba(0, 0, 0, 0.28)'
           }}>
             <div style={{
-              width: '44px',
-              height: '44px',
+              width: '40px',
+              height: '40px',
               borderRadius: '50%',
               backgroundColor: '#fee2e2',
               color: '#dc2626',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 14px'
+              margin: '0 auto 12px'
             }}>
-              <AlertCircle size={22} />
+              <AlertCircle size={20} />
             </div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#991b1b', margin: '0 0 6px 0' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#991b1b', margin: '0 0 6px 0' }}>
               Unable to load students
             </h3>
-            <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 18px 0' }}>{error}</p>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px 0', lineHeight: 1.45 }}>
+              {error}
+            </p>
             <button
               onClick={fetchChildren}
               style={{
-                backgroundColor: '#ea580c',
+                backgroundColor: '#2563eb',
                 color: '#ffffff',
                 border: 'none',
-                borderRadius: '8px',
-                padding: '10px 20px',
+                borderRadius: '6px',
+                padding: '8px 16px',
                 fontSize: '13px',
-                fontWeight: '600',
+                fontWeight: '500',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '7px'
               }}
             >
-              <RefreshCw size={15} />
+              <RefreshCw size={14} />
               <span>Retry</span>
             </button>
           </div>
         ) : children.length === 0 ? (
           /* Empty State */
           <div style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: '#faf7f2',
             borderRadius: '14px',
-            padding: '50px 24px',
+            padding: '44px 24px',
             textAlign: 'center',
-            border: '1px solid #e2e8f0',
-            maxWidth: '480px',
+            border: '1px solid #e8e2d8',
+            maxWidth: '460px',
             margin: '0 auto',
-            width: '100%'
+            width: '100%',
+            boxShadow: '0 4px 18px rgba(0, 0, 0, 0.28)'
           }}>
             <div style={{
-              width: '52px',
-              height: '52px',
+              width: '44px',
+              height: '44px',
               borderRadius: '50%',
-              backgroundColor: '#fff7ed',
-              color: '#ea580c',
+              backgroundColor: '#eff6ff',
+              color: '#2563eb',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 16px'
+              margin: '0 auto 14px'
             }}>
-              <User size={26} />
+              <User size={22} />
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 6px 0' }}>
               No Registered Students Found
             </h3>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              There are currently no student records linked to your account ({currentUser?.email || 'this email'}). If newly enrolled, please check back shortly or contact the academy administration.
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 18px 0', lineHeight: 1.5 }}>
+              There are currently no student records linked to your account ({currentUser?.email || 'this email'}). If newly enrolled, please check back shortly or contact academy administration.
             </p>
             <button
               onClick={fetchChildren}
               style={{
-                backgroundColor: '#ea580c',
+                backgroundColor: '#2563eb',
                 color: '#ffffff',
                 border: 'none',
-                borderRadius: '8px',
-                padding: '10px 22px',
+                borderRadius: '6px',
+                padding: '9px 18px',
                 fontSize: '13px',
-                fontWeight: '600',
+                fontWeight: '500',
                 cursor: 'pointer'
               }}
             >
@@ -322,12 +371,14 @@ export default function SelectChild() {
             </button>
           </div>
         ) : (
-          /* Student Cards Grid */
+          /* Student Cards Responsive Grid */
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : (children.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(290px, 1fr))'),
-            gap: isMobile ? '16px' : '20px',
-            maxWidth: children.length === 1 ? '460px' : '100%',
+            gridTemplateColumns: isMobile
+              ? '1fr'
+              : (children.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'),
+            gap: '18px',
+            maxWidth: children.length === 1 ? '400px' : '100%',
             margin: '0 auto',
             width: '100%'
           }}>
@@ -337,83 +388,73 @@ export default function SelectChild() {
               return (
                 <div
                   key={child.id}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '14px',
-                    padding: isMobile ? '18px 16px' : '22px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#ea580c';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(234, 88, 12, 0.08)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
-                  }}
+                  className="select-child-card"
                 >
                   <div>
-                    {/* Top Identity Row (No profile icon) */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 style={{
-                          fontSize: isMobile ? '16px' : '17px',
-                          fontWeight: '800',
-                          color: '#0f172a',
-                          margin: '0 0 4px 0',
-                          letterSpacing: '-0.2px'
-                        }}>
-                          {child.name}
-                        </h3>
-                        <span style={{
-                          fontSize: '11.5px',
-                          fontWeight: '700',
-                          fontFamily: 'monospace',
-                          color: '#ea580c',
-                          backgroundColor: '#fff7ed',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid #fed7aa',
-                          display: 'inline-block'
-                        }}>
-                          {displayId}
-                        </span>
-                      </div>
+                    {/* Header: Student Name + ID Badge */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <h2 style={{
+                        fontSize: '18px',
+                        fontWeight: '750',
+                        color: '#0f172a',
+                        margin: '0 0 6px 0',
+                        letterSpacing: '-0.2px',
+                        lineHeight: 1.3,
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word'
+                      }}>
+                        {child.name}
+                      </h2>
+
+                      <span style={{
+                        fontSize: '11.5px',
+                        fontWeight: '600',
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                        color: '#475569',
+                        backgroundColor: '#efe9df',
+                        border: '1px solid #ded5c6',
+                        padding: '2.5px 8px',
+                        borderRadius: '5px',
+                        display: 'inline-block'
+                      }}>
+                        {displayId}
+                      </span>
                     </div>
 
-                    {/* Student Info Details */}
+                    {/* Information List */}
                     <div style={{
-                      backgroundColor: '#f8fafc',
-                      borderRadius: '10px',
-                      padding: '14px 16px',
-                      marginBottom: '18px',
-                      border: '1px solid #f1f5f9',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '10px',
+                      gap: '9px',
+                      padding: '12px 0',
+                      borderTop: '1px solid #ede7dc',
+                      borderBottom: '1px solid #ede7dc',
+                      marginBottom: '18px',
                       fontSize: '13px'
                     }}>
                       {/* Class & Division */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                         <span style={{ color: '#64748b', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <BookOpen size={14} color="#94a3b8" />
+                          <BookOpen size={14} color="#64748b" />
                           <span>Class / Grade</span>
                         </span>
-                        <span style={{ color: '#0f172a', fontWeight: '700' }}>
+                        <span style={{
+                          color: '#0f172a',
+                          fontWeight: '600',
+                          textAlign: 'right',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
                           {child.class_grade || 'Not Specified'}
                           {child.division ? ` (Div ${child.division})` : ''}
                         </span>
                       </div>
 
                       {/* School */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                         <span style={{ color: '#64748b', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <School size={14} color="#94a3b8" />
+                          <School size={14} color="#64748b" />
                           <span>School</span>
                         </span>
                         <span style={{
@@ -423,20 +464,28 @@ export default function SelectChild() {
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          maxWidth: '200px'
-                        }}>
+                          maxWidth: isMobile ? '160px' : '190px'
+                        }} title={child.school || 'Life Awakening'}>
                           {child.school || 'Life Awakening'}
                         </span>
                       </div>
 
-                      {/* Branch (if available) */}
+                      {/* Branch (if specified) */}
                       {child.school_branch && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                           <span style={{ color: '#64748b', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <MapPin size={14} color="#94a3b8" />
+                            <MapPin size={14} color="#64748b" />
                             <span>Branch</span>
                           </span>
-                          <span style={{ color: '#0f172a', fontWeight: '600', textAlign: 'right' }}>
+                          <span style={{
+                            color: '#0f172a',
+                            fontWeight: '600',
+                            textAlign: 'right',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: isMobile ? '160px' : '190px'
+                          }} title={child.school_branch}>
                             {child.school_branch}
                           </span>
                         </div>
@@ -444,35 +493,14 @@ export default function SelectChild() {
                     </div>
                   </div>
 
-                  {/* Card Action Button */}
+                  {/* Open Dashboard Button */}
                   <button
                     onClick={() => handleSelectChild(child)}
-                    style={{
-                      width: '100%',
-                      backgroundColor: '#ea580c',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      padding: '12px 18px',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      transition: 'background-color 0.15s ease',
-                      boxShadow: '0 2px 6px rgba(234, 88, 12, 0.15)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#c2410c';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ea580c';
-                    }}
+                    className="select-child-btn"
+                    aria-label={`Open dashboard for ${child.name}`}
                   >
                     <span>Open Dashboard</span>
-                    <ArrowRight size={16} />
+                    <ArrowRight size={15} />
                   </button>
                 </div>
               );

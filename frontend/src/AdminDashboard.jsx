@@ -876,12 +876,12 @@ export default function AdminDashboard() {
     welcome: {
       name: 'Welcome Mail',
       useDefaultHeader: true,
-      subject: 'Welcome to LAP - Batch {{batch_name}}',
+      subject: 'Welcome to Life Awakening Program – Batch {{batch_name}}',
       body: `Dear {{name}},
 
 Welcome to the Life Awakening Program (LAP) as a {{role}}!
 
-We are excited to welcome you to {{batch_name}} and be a part of your transformative journey towards personal growth, awareness, and excellence.
+We are excited to welcome you to {{batch_name}} and embark together on the Butterfly Journey: Explore, Learn, Reflect, Transform. This transformative residential experience is designed to foster self-discovery, leadership, discipline, resilience, and personal excellence.
 
 Program Details
 
@@ -915,7 +915,7 @@ Thank you for your cooperation.
 Best regards,
 
 LAP Administration`,
-      defaultRoles: { student: true, faculty: true, ltc_member: false, parent: false },
+      defaultRoles: { student: true, faculty: true, ltc_member: false, parent_1: false, parent_2: false },
       extraFields: [
         { key: 'start_date', label: 'Program Start Date', type: 'date', placeholder: 'Select start date', default: '' },
         { key: 'end_date', label: 'Program End Date', type: 'date', placeholder: 'Select end date', default: '' }
@@ -925,15 +925,13 @@ LAP Administration`,
       name: 'Parent Communication',
       useDefaultHeader: true,
       subject: 'Life Awakening Program (LAP) – Parent Communication – {{batch_name}}',
-      body: `Dear Parents/Guardians,
+      body: `Dear Parent/Guardian of {{name}},
 
 Greetings from MIT World Peace University!
 
 It gives us immense pleasure to welcome you and your ward to the Life Awakening Program (LAP) – {{batch_name}}, to be held from {{start_date}} to {{end_date}}, Academic Year 2026–27.
 
-The Life Awakening Program is a unique experiential learning initiative designed to provide students with meaningful opportunities for self-discovery, personal growth, leadership, teamwork, discipline, social responsibility, and connection with nature and community life.
-
-The Life Awakening Program follows the philosophy of "Connecting the Soul to the Soil" and integrates five important dimensions of holistic development:
+The Life Awakening Program is a unique residential experiential learning initiative designed to nurture young minds through our signature Butterfly Journey: Explore, Learn, Reflect, Transform. Guided by the philosophy of "Connecting the Soul to the Soil", the program integrates five foundational dimensions of holistic development:
 
 • Agriculture & Nature
 • Physical Fitness & Sports
@@ -1008,7 +1006,7 @@ We look forward to welcoming LAP {{batch_name}} and wish all our students a safe
 Warm Regards,
 LAP Team
 MIT World Peace University, Pune`,
-      defaultRoles: { student: false, faculty: false, ltc_member: false, parent: true },
+      defaultRoles: { student: false, faculty: false, ltc_member: false, parent_1: true, parent_2: true },
       extraFields: [
         { key: 'start_date', label: 'Program Start Date', type: 'date', placeholder: 'Select start date', default: '' },
         { key: 'end_date', label: 'Program End Date', type: 'date', placeholder: 'Select end date', default: '' }
@@ -1648,7 +1646,7 @@ MIT World Peace University, Pune`,
   const [orientationBody, setOrientationBody] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState('welcome')
   const [facultyDataCollectionEmails, setFacultyDataCollectionEmails] = useState('')
-  const [recipientRoles, setRecipientRoles] = useState({ student: true, faculty: true, ltc_member: false, parent: false })
+  const [recipientRoles, setRecipientRoles] = useState({ student: true, faculty: true, ltc_member: false, parent_1: false, parent_2: false })
   const [extraFieldValues, setExtraFieldValues] = useState({})
   const [isTemplateDirty, setIsTemplateDirty] = useState(false)
   const [isSendingOrientation, setIsSendingOrientation] = useState(false)
@@ -5203,7 +5201,8 @@ MIT World Peace University, Pune`,
         student: false,
         faculty: false,
         ltc_member: false,
-        parent: false,
+        parent_1: false,
+        parent_2: false,
         ...(t.defaultRoles || {})
       });
       const defaults = {};
@@ -5340,26 +5339,58 @@ MIT World Peace University, Pune`,
     const list = [];
     orientationRecipients.forEach(r => {
       if (r.role === 'student' && recipientRoles.student) {
-        list.push(r);
+        const em = (r.email || '').trim();
+        if (em && !em.endsWith('@lifeawakening.internal')) {
+          list.push(r);
+        }
       }
       if (r.role === 'faculty' && recipientRoles.faculty) {
-        list.push(r);
+        const em = (r.email || '').trim();
+        if (em) list.push(r);
       }
       if (r.role === 'ltc_member' && recipientRoles.ltc_member) {
-        list.push(r);
+        const em = (r.email || '').trim();
+        if (em) list.push(r);
       }
-      if (recipientRoles.parent && r.role === 'student' && r.parent_email && r.parent_email.trim()) {
-        list.push({
-          id: `parent-${r.id}`,
-          name: `Parent of ${r.name}`,
-          email: r.parent_email.trim(),
-          role: 'parent',
-          squad: r.squad
-        });
+      if ((recipientRoles.parent_1 || recipientRoles.parent) && r.role === 'student') {
+        const p1Email = (r.parent_1_email || r.parent_email || '').trim();
+        if (p1Email && !p1Email.endsWith('@lifeawakening.internal')) {
+          list.push({
+            id: `parent1-${r.id}`,
+            name: `Parent/Guardian of ${r.name}`,
+            student_name: r.name,
+            email: p1Email,
+            role: 'parent',
+            sub_role: 'parent_1',
+            squad: r.squad
+          });
+        }
+      }
+      if (recipientRoles.parent_2 && r.role === 'student') {
+        const p2Email = (r.parent_2_email || '').trim();
+        if (p2Email && !p2Email.endsWith('@lifeawakening.internal')) {
+          list.push({
+            id: `parent2-${r.id}`,
+            name: `Parent/Guardian of ${r.name}`,
+            student_name: r.name,
+            email: p2Email,
+            role: 'parent',
+            sub_role: 'parent_2',
+            squad: r.squad
+          });
+        }
       }
     });
     return list;
   }, [orientationRecipients, recipientRoles]);
+
+  const uniqueRecipientEmailCount = useMemo(() => {
+    const set = new Set();
+    filteredRecipients.forEach(r => {
+      if (r.email) set.add(r.email.trim().toLowerCase());
+    });
+    return set.size;
+  }, [filteredRecipients]);
 
   const recipientSummaryMetrics = useMemo(() => {
     const studentRecipients = orientationRecipients.filter(r => r.role === 'student');
@@ -5367,10 +5398,25 @@ MIT World Peace University, Pune`,
     const ltcRecipients = orientationRecipients.filter(r => r.role === 'ltc_member');
 
     const totalStudents = studentRecipients.length;
-    const studentsWithParent = studentRecipients.filter(r => r.parent_email && r.parent_email.trim() !== '');
-    const totalParents = studentsWithParent.length;
-    const linkedPairs = studentsWithParent.length;
-    const missingParentStudents = studentRecipients.filter(r => !r.parent_email || r.parent_email.trim() === '');
+    const studentsWithValidEmail = studentRecipients.filter(r => r.email && !r.email.endsWith('@lifeawakening.internal')).length;
+
+    const studentsWithParent1 = studentRecipients.filter(r => {
+      const em = (r.parent_1_email || r.parent_email || '').trim();
+      return em && !em.endsWith('@lifeawakening.internal');
+    });
+    const studentsWithParent2 = studentRecipients.filter(r => {
+      const em = (r.parent_2_email || '').trim();
+      return em && !em.endsWith('@lifeawakening.internal');
+    });
+
+    const totalParent1 = studentsWithParent1.length;
+    const totalParent2 = studentsWithParent2.length;
+    const linkedPairs = studentsWithParent1.length;
+    const missingParentStudents = studentRecipients.filter(r => {
+      const em1 = (r.parent_1_email || r.parent_email || '').trim();
+      const em2 = (r.parent_2_email || '').trim();
+      return (!em1 || em1.endsWith('@lifeawakening.internal')) && (!em2 || em2.endsWith('@lifeawakening.internal'));
+    });
     const totalMissingParents = missingParentStudents.length;
 
     const panelsSet = new Set();
@@ -5381,7 +5427,10 @@ MIT World Peace University, Pune`,
 
     return {
       totalStudents,
-      totalParents,
+      studentsWithValidEmail,
+      totalParent1,
+      totalParent2,
+      totalParents: totalParent1 + totalParent2,
       linkedPairs,
       totalMissingParents,
       missingParentStudents,
@@ -5405,9 +5454,13 @@ MIT World Peace University, Pune`,
     }
 
     if (previewParentFilter === 'LINKED') {
-      list = list.filter(s => s.parent_email && s.parent_email.trim() !== '');
+      list = list.filter(s => (s.parent_1_email || s.parent_email || s.parent_2_email) && !(s.parent_1_email || s.parent_email || '').endsWith('@lifeawakening.internal'));
     } else if (previewParentFilter === 'MISSING') {
-      list = list.filter(s => !s.parent_email || s.parent_email.trim() === '');
+      list = list.filter(s => {
+        const em1 = (s.parent_1_email || s.parent_email || '').trim();
+        const em2 = (s.parent_2_email || '').trim();
+        return (!em1 || em1.endsWith('@lifeawakening.internal')) && (!em2 || em2.endsWith('@lifeawakening.internal'));
+      });
     }
 
     if (previewSearchText.trim()) {
@@ -5416,6 +5469,8 @@ MIT World Peace University, Pune`,
         (s.name || '').toLowerCase().includes(q) ||
         (s.email || '').toLowerCase().includes(q) ||
         (s.prn || '').toLowerCase().includes(q) ||
+        (s.parent_1_email || '').toLowerCase().includes(q) ||
+        (s.parent_2_email || '').toLowerCase().includes(q) ||
         (s.parent_email || '').toLowerCase().includes(q) ||
         (s.squad || '').toLowerCase().includes(q) ||
         (s.panel || '').toLowerCase().includes(q)
@@ -5583,7 +5638,7 @@ MIT World Peace University, Pune`,
 
     const activeRoles = Object.keys(recipientRoles).filter(k => recipientRoles[k]);
     if (activeRoles.length === 0) {
-      return alert('Please select at least one recipient group (Students, Faculty, or LTC Members).')
+      return alert('Please select at least one recipient group (Students, Faculty, LTC Members, Parent 1, or Parent 2).')
     }
 
     // Proper validation for CC and BCC
@@ -5602,7 +5657,7 @@ MIT World Peace University, Pune`,
       }
     }
 
-    if (!window.confirm(`Are you sure you want to queue and dispatch this email to the selected recipient group(s)?\n\nBatch ID: ${orientationBatchId}\nSubject: "${orientationSubject}"`)) {
+    if (!window.confirm(`Are you sure you want to queue and dispatch this email to the selected recipient group(s) (${uniqueRecipientEmailCount} unique recipient(s))?\n\nBatch ID: ${orientationBatchId}\nSubject: "${orientationSubject}"`)) {
       return;
     }
 
@@ -5755,31 +5810,47 @@ MIT World Peace University, Pune`,
 
   const renderOrientationView = () => {
     const sampleUserByRole = {
-      student: { name: 'Rahul Sharma', role: 'student', email: 'rahul.sharma@mitwpu.edu.in', squad: 'Surya' },
-      faculty: { name: 'Dr. Anita Roy', role: 'faculty', email: 'anita.roy@mitwpu.edu.in', squad: 'Surya' },
-      parent: { name: 'Parent of Rahul Sharma', role: 'parent', email: 'parent.rahul@gmail.com', squad: 'Surya' },
-      ltc_member: { name: 'Vikram Singh', role: 'ltc_member', email: 'vikram.singh@mitwpu.edu.in', squad: 'Surya' }
+      student: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'student', email: 'rahul.sharma@mitwpu.edu.in', squad: 'Surya' },
+      faculty: { name: 'Dr. Anita Roy', student_name: 'Rahul Sharma', role: 'faculty', email: 'anita.roy@mitwpu.edu.in', squad: 'Surya' },
+      parent: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent.rahul@gmail.com', squad: 'Surya' },
+      parent_1: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent1.rahul@gmail.com', squad: 'Surya' },
+      parent_2: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent2.rahul@gmail.com', squad: 'Surya' },
+      ltc_member: { name: 'Vikram Singh', student_name: 'Rahul Sharma', role: 'ltc_member', email: 'vikram.singh@mitwpu.edu.in', squad: 'Surya' }
     };
 
+    const isParentPreviewRole = previewRecipientRole === 'parent' || previewRecipientRole === 'parent_1' || previewRecipientRole === 'parent_2';
+
     const matchedRecipient = filteredRecipients.find(r => {
-      if (previewRecipientRole === 'parent') return r.role === 'student' && r.parent_email && r.parent_email.trim();
+      if (previewRecipientRole === 'parent' || previewRecipientRole === 'parent_1') {
+        const p1 = (r.parent_1_email || r.parent_email || '').trim();
+        return r.role === 'student' && p1 !== '' && !p1.endsWith('@lifeawakening.internal');
+      }
+      if (previewRecipientRole === 'parent_2') {
+        const p2 = (r.parent_2_email || '').trim();
+        return r.role === 'student' && p2 !== '' && !p2.endsWith('@lifeawakening.internal');
+      }
       return r.role === previewRecipientRole;
     });
 
     const firstFacultyEmail = parseEmailList(facultyDataCollectionEmails).valid[0];
     const sampleUser = selectedTemplate === 'faculty_data_collection' ? {
       name: 'Faculty Member',
+      student_name: 'Rahul Sharma',
       role: 'faculty',
       email: firstFacultyEmail || 'faculty.member@mitwpu.edu.in',
       squad: 'Surya'
     } : (matchedRecipient ? (
-      previewRecipientRole === 'parent' ? {
-        name: `Parent of ${matchedRecipient.name}`,
+      isParentPreviewRole ? {
+        name: matchedRecipient.name,
+        student_name: matchedRecipient.name,
         role: 'parent',
-        email: matchedRecipient.parent_email || 'parent.rahul@gmail.com',
+        email: previewRecipientRole === 'parent_2' 
+          ? (matchedRecipient.parent_2_email || 'parent2.rahul@gmail.com') 
+          : (matchedRecipient.parent_1_email || matchedRecipient.parent_email || 'parent1.rahul@gmail.com'),
         squad: (matchedRecipient.squad && matchedRecipient.squad !== 'LTC Admin') ? matchedRecipient.squad : 'Surya'
       } : {
         ...matchedRecipient,
+        student_name: matchedRecipient.name,
         squad: (matchedRecipient.squad && matchedRecipient.squad !== 'LTC Admin') ? matchedRecipient.squad : 'Surya'
       }
     ) : (sampleUserByRole[previewRecipientRole] || sampleUserByRole.student));
@@ -6242,14 +6313,23 @@ MIT World Peace University, Pune`,
                       />
                       Faculty ({orientationRecipients.filter(r => r.role === 'faculty').length})
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', background: recipientRoles.parent ? '#eff6ff' : '#f8fafc', border: recipientRoles.parent ? '1px solid #bfdbfe' : '1px solid #e2e8f0', fontSize: '11.5px', fontWeight: '700', color: recipientRoles.parent ? '#1e40af' : '#475569', cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', background: recipientRoles.parent_1 ? '#eff6ff' : '#f8fafc', border: recipientRoles.parent_1 ? '1px solid #bfdbfe' : '1px solid #e2e8f0', fontSize: '11.5px', fontWeight: '700', color: recipientRoles.parent_1 ? '#1e40af' : '#475569', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
-                        checked={!!recipientRoles.parent}
-                        onChange={(e) => setRecipientRoles(prev => ({ ...prev, parent: e.target.checked }))}
+                        checked={!!recipientRoles.parent_1}
+                        onChange={(e) => setRecipientRoles(prev => ({ ...prev, parent_1: e.target.checked }))}
                         style={{ width: '14px', height: '14px', accentColor: '#2563eb', cursor: 'pointer' }}
                       />
-                      Parents ({orientationRecipients.filter(r => r.role === 'student' && r.parent_email && r.parent_email.trim()).length})
+                      Parent 1 ({recipientSummaryMetrics.totalParent1})
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', background: recipientRoles.parent_2 ? '#eff6ff' : '#f8fafc', border: recipientRoles.parent_2 ? '1px solid #bfdbfe' : '1px solid #e2e8f0', fontSize: '11.5px', fontWeight: '700', color: recipientRoles.parent_2 ? '#1e40af' : '#475569', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!recipientRoles.parent_2}
+                        onChange={(e) => setRecipientRoles(prev => ({ ...prev, parent_2: e.target.checked }))}
+                        style={{ width: '14px', height: '14px', accentColor: '#2563eb', cursor: 'pointer' }}
+                      />
+                      Parent 2 ({recipientSummaryMetrics.totalParent2})
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', background: recipientRoles.ltc_member ? '#eff6ff' : '#f8fafc', border: recipientRoles.ltc_member ? '1px solid #bfdbfe' : '1px solid #e2e8f0', fontSize: '11.5px', fontWeight: '700', color: recipientRoles.ltc_member ? '#1e40af' : '#475569', cursor: 'pointer' }}>
                       <input
@@ -6713,7 +6793,8 @@ MIT World Peace University, Pune`,
                       {[
                         { role: 'student', label: 'Student' },
                         { role: 'faculty', label: 'Faculty' },
-                        { role: 'parent', label: 'Parent' },
+                        { role: 'parent_1', label: 'Parent 1' },
+                        { role: 'parent_2', label: 'Parent 2' },
                         { role: 'ltc_member', label: 'LTC' }
                       ].map(item => {
                         const isRoleActive = previewRecipientRole === item.role;
@@ -7347,7 +7428,7 @@ MIT World Peace University, Pune`,
                   </div>
                 </div>
 
-                {/* Total Parents Card Button */}
+                {/* Parent 1 Card Button */}
                 <div 
                   onClick={() => setPreviewParentFilter('LINKED')}
                   className="hover:shadow-sm transition-all duration-150"
@@ -7363,18 +7444,18 @@ MIT World Peace University, Pune`,
                     boxShadow: previewParentFilter === 'LINKED' ? '0 1px 3px rgba(37,99,235,0.08)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
-                  title="Filter list to show records with linked parents"
+                  title="Filter list to show records with linked Parent 1"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: '#ffffff', border: '1px solid #e2e8f0', color: previewParentFilter === 'LINKED' ? '#2563eb' : '#64748b', flexShrink: 0 }}>
                     <UserCheck size={13} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: '9px', fontWeight: '800', color: previewParentFilter === 'LINKED' ? '#1e40af' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', lineHeight: 1 }}>Total Parents</div>
-                    <div style={{ fontSize: '15px', fontWeight: '900', color: previewParentFilter === 'LINKED' ? '#1e3a8a' : '#0f172a', marginTop: '2px', lineHeight: 1 }}>{recipientSummaryMetrics.totalParents}</div>
+                    <div style={{ fontSize: '9px', fontWeight: '800', color: previewParentFilter === 'LINKED' ? '#1e40af' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', lineHeight: 1 }}>Parent 1</div>
+                    <div style={{ fontSize: '15px', fontWeight: '900', color: previewParentFilter === 'LINKED' ? '#1e3a8a' : '#0f172a', marginTop: '2px', lineHeight: 1 }}>{recipientSummaryMetrics.totalParent1}</div>
                   </div>
                 </div>
 
-                {/* Linked Pairs Card Button */}
+                {/* Parent 2 Card Button */}
                 <div 
                   onClick={() => setPreviewParentFilter('LINKED')}
                   className="hover:shadow-sm transition-all duration-150"
@@ -7390,14 +7471,36 @@ MIT World Peace University, Pune`,
                     boxShadow: previewParentFilter === 'LINKED' ? '0 1px 3px rgba(37,99,235,0.08)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
-                  title="Filter list to show records with linked parents"
+                  title="Records with registered Parent 2"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: '#ffffff', border: '1px solid #e2e8f0', color: previewParentFilter === 'LINKED' ? '#2563eb' : '#64748b', flexShrink: 0 }}>
                     <LinkIcon size={13} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: '9px', fontWeight: '800', color: previewParentFilter === 'LINKED' ? '#1e40af' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', lineHeight: 1 }}>Linked Pairs</div>
-                    <div style={{ fontSize: '15px', fontWeight: '900', color: previewParentFilter === 'LINKED' ? '#1e3a8a' : '#0f172a', marginTop: '2px', lineHeight: 1 }}>{recipientSummaryMetrics.linkedPairs}</div>
+                    <div style={{ fontSize: '9px', fontWeight: '800', color: previewParentFilter === 'LINKED' ? '#1e40af' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', lineHeight: 1 }}>Parent 2</div>
+                    <div style={{ fontSize: '15px', fontWeight: '900', color: previewParentFilter === 'LINKED' ? '#1e3a8a' : '#0f172a', marginTop: '2px', lineHeight: 1 }}>{recipientSummaryMetrics.totalParent2}</div>
+                  </div>
+                </div>
+
+                {/* Queued Unique Emails Card */}
+                <div 
+                  style={{ 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: '8px', 
+                    padding: '6px 12px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px'
+                  }}
+                  title="Unique recipient email addresses that will receive this email"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: '#ffffff', border: '1px solid #e2e8f0', color: '#2563eb', flexShrink: 0 }}>
+                    <Mail size={13} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', lineHeight: 1 }}>Queued (Unique)</div>
+                    <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a', marginTop: '2px', lineHeight: 1 }}>{uniqueRecipientEmailCount}</div>
                   </div>
                 </div>
 
@@ -7549,7 +7652,7 @@ MIT World Peace University, Pune`,
               ) : (
                 <div>
                   {/* Interactive Search & Filter Toolbar for Grouped Preview */}
-                  {(recipientRoles.student || recipientRoles.parent) && (
+                  {(recipientRoles.student || recipientRoles.parent_1 || recipientRoles.parent_2 || recipientRoles.parent) && (
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
                         {/* Search Input Box */}
@@ -7649,7 +7752,7 @@ MIT World Peace University, Pune`,
 
                   {/* Grouped Preview Tables Body */}
                   <div style={{ maxHeight: '520px', overflowY: 'auto', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {(recipientRoles.student || recipientRoles.parent) && (
+                    {(recipientRoles.student || recipientRoles.parent_1 || recipientRoles.parent_2 || recipientRoles.parent) && (
                       filteredStudentRecipients.length === 0 ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
                           <Users size={24} style={{ opacity: 0.5, marginBottom: '6px', margin: '0 auto' }} />
@@ -7663,15 +7766,20 @@ MIT World Peace University, Pune`,
                                 <th style={{ padding: '10px 12px', fontWeight: '800', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Student Info</th>
                                 <th style={{ padding: '10px 12px', fontWeight: '800', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Panel/Squad</th>
                                 <th style={{ padding: '10px 12px', fontWeight: '800', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Student Contact</th>
-                                <th style={{ padding: '10px 12px', fontWeight: '800', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Parent Contact</th>
+                                <th style={{ padding: '10px 12px', fontWeight: '800', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Parent Contact (P1 / P2)</th>
                                 <th style={{ padding: '10px 12px', fontWeight: '800', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status Queued</th>
                               </tr>
                             </thead>
                             <tbody>
                               {paginatedStudentRecipients.map((s, idx) => {
-                                const hasParentEmail = s.parent_email && s.parent_email.trim() !== '';
-                                const isStudentQueued = recipientRoles.student;
-                                const isParentQueued = recipientRoles.parent && hasParentEmail;
+                                const p1 = (s.parent_1_email || s.parent_email || '').trim();
+                                const p2 = (s.parent_2_email || '').trim();
+                                const hasP1 = p1 && !p1.endsWith('@lifeawakening.internal');
+                                const hasP2 = p2 && !p2.endsWith('@lifeawakening.internal');
+
+                                const isStudentQueued = recipientRoles.student && s.email && !s.email.endsWith('@lifeawakening.internal');
+                                const isParent1Queued = (recipientRoles.parent_1 || recipientRoles.parent) && hasP1;
+                                const isParent2Queued = recipientRoles.parent_2 && hasP2;
 
                                 return (
                                   <tr key={`grouped-student-${s.id || idx}`} style={{ borderBottom: '1px solid #f1f5f9' }} className="hover:bg-slate-50">
@@ -7686,25 +7794,44 @@ MIT World Peace University, Pune`,
                                       {mailboxChannel === 'whatsapp' ? (s.phone || <span style={{ color: '#ef4444', fontWeight: '600' }}>Missing</span>) : s.email}
                                     </td>
                                     <td style={{ padding: '10px 12px' }}>
-                                      {hasParentEmail ? (
-                                        <div style={{ color: '#475569' }}>
-                                          {mailboxChannel === 'whatsapp' ? (s.parent_mobile || <span style={{ color: '#ef4444', fontWeight: '600' }}>Missing</span>) : s.parent_email}
-                                        </div>
-                                      ) : (
-                                        <span style={{ color: '#ea580c', background: '#fff7ed', border: '1px solid #ffedd5', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
-                                          Missing Parent
-                                        </span>
-                                      )}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                        {hasP1 ? (
+                                          <div style={{ fontSize: '11px', color: '#334155' }}>
+                                            <span style={{ fontWeight: '700', color: '#64748b' }}>P1: </span>
+                                            {mailboxChannel === 'whatsapp' ? (s.parent_mobile || p1) : p1}
+                                            {s.parent_1_name && <span style={{ color: '#94a3b8', fontSize: '10px' }}> ({s.parent_1_name})</span>}
+                                          </div>
+                                        ) : null}
+                                        {hasP2 ? (
+                                          <div style={{ fontSize: '11px', color: '#334155' }}>
+                                            <span style={{ fontWeight: '700', color: '#64748b' }}>P2: </span>
+                                            {p2}
+                                            {s.parent_2_name && <span style={{ color: '#94a3b8', fontSize: '10px' }}> ({s.parent_2_name})</span>}
+                                          </div>
+                                        ) : null}
+                                        {!hasP1 && !hasP2 && (
+                                          <span style={{ color: '#ea580c', background: '#fff7ed', border: '1px solid #ffedd5', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', width: 'fit-content' }}>
+                                            Missing Parent
+                                          </span>
+                                        )}
+                                      </div>
                                     </td>
                                     <td style={{ padding: '10px 12px' }}>
-                                      <div style={{ display: 'flex', gap: '4px' }}>
+                                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                         {isStudentQueued && (
                                           <span className="badge badge-blue" style={{ fontSize: '10px', padding: '2px 6px' }}>Student</span>
                                         )}
-                                        {isParentQueued ? (
-                                          <span className="badge badge-purple" style={{ fontSize: '10px', padding: '2px 6px' }}>Parent</span>
-                                        ) : (
-                                          recipientRoles.parent && <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>No Parent</span>
+                                        {isParent1Queued && (
+                                          <span className="badge badge-purple" style={{ fontSize: '10px', padding: '2px 6px' }}>Parent 1</span>
+                                        )}
+                                        {isParent2Queued && (
+                                          <span className="badge badge-purple" style={{ fontSize: '10px', padding: '2px 6px' }}>Parent 2</span>
+                                        )}
+                                        {(recipientRoles.parent_1 || recipientRoles.parent) && !hasP1 && (
+                                          <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>No P1</span>
+                                        )}
+                                        {recipientRoles.parent_2 && !hasP2 && (
+                                          <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>No P2</span>
                                         )}
                                       </div>
                                     </td>
@@ -7787,7 +7914,7 @@ MIT World Peace University, Pune`,
                   </div>
 
                   {/* Bottom Pagination Controls Bar */}
-                  {(recipientRoles.student || recipientRoles.parent) && filteredStudentRecipients.length > previewPageSize && (
+                  {(recipientRoles.student || recipientRoles.parent_1 || recipientRoles.parent_2 || recipientRoles.parent) && filteredStudentRecipients.length > previewPageSize && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f1f5f9', fontSize: '11.5px', color: '#475569' }}>
                       <div>
                         Page <strong style={{ color: '#0f172a' }}>{previewCurrentPage}</strong> of <strong style={{ color: '#0f172a' }}>{totalStudentPages}</strong>

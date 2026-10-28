@@ -121,6 +121,7 @@ router.post('/bulk-upload', authMiddleware(['admin']), upload.single('file'), ad
 router.get('/upload-jobs/:jobId', authMiddleware(['admin']), adminController.getUploadJobStatus);
 router.get('/users/:id/profile', authMiddleware(['admin', 'superadmin', 'superadmin_readonly', 'dean_ltc', 'support', 'jeeten']), adminController.getUserProfile);
 router.put('/users/:id/profile', authMiddleware(['admin', 'superadmin', 'superadmin_readonly', 'dean_ltc', 'support', 'jeeten']), adminController.updateUserProfile);
+router.post('/upload-file', authMiddleware(['admin', 'superadmin', 'superadmin_readonly', 'support']), memoryUpload.single('file'), adminController.uploadAdminFile);
 router.post('/auto-allocate', authMiddleware(['admin']), adminController.autoAllocateRoomsSquads);
 router.post('/bulk-insurance', authMiddleware(['admin']), upload.single('file'), adminController.bulkInsurance);
 router.post('/insurance-bulk-upload', authMiddleware(['admin']), upload.single('file'), adminController.bulkInsurance);

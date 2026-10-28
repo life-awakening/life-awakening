@@ -941,9 +941,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
         'Day 3 Attended': a.day3?.is_recorded ? a.day3.attended : '—',
         'Day 3 Absent': a.day3?.is_recorded ? a.day3.not_attended : '—',
         'Day 4 Attended': a.day4?.is_recorded ? a.day4.attended : '—',
-        'Day 4 Absent': a.day4?.is_recorded ? a.day4.not_attended : '—',
-        'Day 5 Attended': a.day5?.is_recorded ? a.day5.attended : '—',
-        'Day 5 Absent': a.day5?.is_recorded ? a.day5.not_attended : '—'
+        'Day 4 Absent': a.day4?.is_recorded ? a.day4.not_attended : '—'
       }))
 
       if (squadSummaryData.totals) {
@@ -959,9 +957,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
           'Day 3 Attended': t.day3?.is_recorded ? t.day3.attended : '—',
           'Day 3 Absent': t.day3?.is_recorded ? t.day3.not_attended : '—',
           'Day 4 Attended': t.day4?.is_recorded ? t.day4.attended : '—',
-          'Day 4 Absent': t.day4?.is_recorded ? t.day4.not_attended : '—',
-          'Day 5 Attended': t.day5?.is_recorded ? t.day5.attended : '—',
-          'Day 5 Absent': t.day5?.is_recorded ? t.day5.not_attended : '—'
+          'Day 4 Absent': t.day4?.is_recorded ? t.day4.not_attended : '—'
         })
       }
 
@@ -2227,7 +2223,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                         Day-Wise Activity Attendance Summary
                       </h3>
                       <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dbeafe' }}>
-                        Day 1 to Day 5 activity &amp; pillar count of students who attended (present) vs not attended (absent / DNR).
+                        Day 1 to Day 4 activity &amp; pillar count of students who attended (present) vs not attended (absent / DNR).
                       </p>
                     </div>
 
@@ -2373,7 +2369,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                             <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>ATTENDANCE</span>
                             <div style={{ fontSize: '22px', fontWeight: '900', color: '#15803d', marginTop: '2px' }}>
                               {(() => {
-                                const recDays = [1,2,3,4,5].filter(d => squadSummaryData.recordedDays?.includes(d));
+                                const recDays = [1,2,3,4].filter(d => squadSummaryData.recordedDays?.includes(d));
                                 if (recDays.length === 0 || !squadSummaryData.totals.total_students) return '—';
                                 const sumPct = recDays.reduce((acc, d) => acc + (squadSummaryData.totals[`day${d}`]?.attendance_pct || 0), 0);
                                 return `${Math.round(sumPct / recDays.length)}%`;
@@ -2412,17 +2408,17 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                               <th style={{ padding: '12px 10px', width: '75px', borderRight: '1.5px solid #cbd5e1', color: '#dc2626' }} rowSpan={2}>
                                 DNR (DAY 1)
                               </th>
-                              {[1, 2, 3, 4, 5].map(d => (
-                                <th key={d} colSpan={2} style={{ padding: '8px 10px', borderRight: d < 5 ? '1px solid #e2e8f0' : 'none', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                              {[1, 2, 3, 4].map(d => (
+                                <th key={d} colSpan={2} style={{ padding: '8px 10px', borderRight: d < 4 ? '1px solid #e2e8f0' : 'none', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                                   DAY {d} {squadSummaryData?.recordedDays?.includes(d) ? '' : '(UNMARKED)'}
                                 </th>
                               ))}
                             </tr>
                             <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #cbd5e1', fontSize: '10.5px', fontWeight: '700', color: '#64748b' }}>
-                              {[1, 2, 3, 4, 5].map(d => (
+                              {[1, 2, 3, 4].map(d => (
                                 <React.Fragment key={`sub-${d}`}>
                                   <th style={{ padding: '6px 8px', color: '#16a34a', width: '70px' }}>Attended</th>
-                                  <th style={{ padding: '6px 8px', color: '#dc2626', width: '70px', borderRight: d < 5 ? '1px solid #e2e8f0' : 'none' }}>Absent</th>
+                                  <th style={{ padding: '6px 8px', color: '#dc2626', width: '70px', borderRight: d < 4 ? '1px solid #e2e8f0' : 'none' }}>Absent</th>
                                 </React.Fragment>
                               ))}
                             </tr>
@@ -2439,7 +2435,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                                 <td style={{ padding: '10px', fontWeight: '800', color: a.dnr_count > 0 ? '#dc2626' : '#94a3b8', borderRight: '1.5px solid #cbd5e1' }}>
                                   {a.dnr_count > 0 ? a.dnr_count : '0'}
                                 </td>
-                                {[1, 2, 3, 4, 5].map(d => {
+                                {[1, 2, 3, 4].map(d => {
                                   const dayObj = a[`day${d}`] || {};
                                   const isRec = dayObj.is_recorded;
                                   const isValid = dayObj.is_valid_day !== false;
@@ -2448,7 +2444,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                                       <td style={{ padding: '10px 6px', fontWeight: '750', color: isRec ? '#16a34a' : '#94a3b8', background: isRec && dayObj.attended > 0 ? '#f0fdf4' : 'transparent' }}>
                                         {!isValid ? '—' : (isRec ? dayObj.attended : '—')}
                                       </td>
-                                      <td style={{ padding: '10px 6px', fontWeight: '750', color: isRec ? (dayObj.not_attended > 0 ? '#dc2626' : '#64748b') : '#94a3b8', borderRight: d < 5 ? '1px solid #e2e8f0' : 'none', background: isRec && dayObj.not_attended > 0 ? '#fef2f2' : 'transparent' }}>
+                                      <td style={{ padding: '10px 6px', fontWeight: '750', color: isRec ? (dayObj.not_attended > 0 ? '#dc2626' : '#64748b') : '#94a3b8', borderRight: d < 4 ? '1px solid #e2e8f0' : 'none', background: isRec && dayObj.not_attended > 0 ? '#fef2f2' : 'transparent' }}>
                                         {!isValid ? '—' : (isRec ? dayObj.not_attended : '—')}
                                       </td>
                                     </React.Fragment>
@@ -2469,7 +2465,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                                 <td style={{ padding: '12px 10px', borderRight: '1.5px solid #cbd5e1', color: squadSummaryData.totals.dnr_count > 0 ? '#dc2626' : '#64748b', fontSize: '13px' }}>
                                   {squadSummaryData.totals.dnr_count}
                                 </td>
-                                {[1, 2, 3, 4, 5].map(d => {
+                                {[1, 2, 3, 4].map(d => {
                                   const tObj = squadSummaryData.totals[`day${d}`] || {};
                                   const isRec = tObj.is_recorded;
                                   return (
@@ -2477,7 +2473,7 @@ export default function OverviewTab({ token, apiBase, user, isMobile: propIsMobi
                                       <td style={{ padding: '12px 6px', color: isRec ? '#15803d' : '#94a3b8', fontSize: '13px' }}>
                                         {isRec ? tObj.attended : '—'}
                                       </td>
-                                      <td style={{ padding: '12px 6px', color: isRec ? '#b91c1c' : '#94a3b8', borderRight: d < 5 ? '1px solid #e2e8f0' : 'none', fontSize: '13px' }}>
+                                      <td style={{ padding: '12px 6px', color: isRec ? '#b91c1c' : '#94a3b8', borderRight: d < 4 ? '1px solid #e2e8f0' : 'none', fontSize: '13px' }}>
                                         {isRec ? tObj.not_attended : '—'}
                                       </td>
                                     </React.Fragment>

@@ -19,6 +19,7 @@
 const pool = require('../config/db');
 const { writeAudit, createSystemNotification } = require('../utils/helpers');
 const { normalizeClassGrade } = require('../utils/classNormalizer');
+const { generateNextSystemStudentId } = require('../utils/studentIdHelper');
 
 const STUDENT_ID_PREFIX = 'LA-';
 const PARENT_PLACEHOLDER_NAMES = new Set(['parent / guardian', 'parent', 'guardian']);
@@ -50,7 +51,7 @@ const buildStudentQuery = ({ batchId = null } = {}) => {
   }
   const sql = `
     SELECT
-      u.id, u.name, u.class_grade, u.school, u.school_branch, u.roll_number, u.division,
+      u.id, u.system_student_id, u.name, u.class_grade, u.school, u.school_branch, u.roll_number, u.division,
       u.phone, u.parent_mobile, u.emergency_contact_alt_mobile, u.parent_email AS profile_parent_email,
       u.nominee_name, u.nominee_relationship, u.gender, u.dob, u.status,
       u.payment_status, u.payment_screenshot_url, u.payment_verified_at,
@@ -98,7 +99,9 @@ const shapeStudent = (row) => {
 
   return {
     id: row.id,
-    student_id: formatStudentId(row.id),
+    student_id: row.system_student_id || formatStudentId(row.id),
+    system_student_id: row.system_student_id || null,
+    student_display_id: row.system_student_id || formatStudentId(row.id),
     name: row.name,
     class_grade: normalizeClassGrade(row.class_grade) || row.class_grade || null,
     school: row.school || null,
@@ -281,6 +284,11 @@ const assignLaStudentsToBatch = async (req, res) => {
     capacitySkipped = toInsert.length - accepted.length;
 
     for (const sid of accepted) {
+      const uCheck = await client.query('SELECT system_student_id FROM users WHERE id = $1', [sid]);
+      if (!uCheck.rows[0]?.system_student_id) {
+        const nextSysId = await generateNextSystemStudentId(client, batchId);
+        await client.query('UPDATE users SET system_student_id = $1 WHERE id = $2', [nextSysId, sid]);
+      }
       const barcode = `LA-${batchId}-${sid}-${Math.floor(Math.random() * 10000)}`;
       const ins = await client.query(
         `INSERT INTO batch_students (batch_id, student_id, barcode)

@@ -151,8 +151,11 @@ export default function FeedbackTab({ token, apiBase, showToast, batches }) {
     let result = studentData.filter(row => {
       const name = String(row[0] || '').toLowerCase()
       const prn = String(row[1] || '').toLowerCase()
+      const squad = String(row[3] || '').toLowerCase()
+      const parentName = String(row[39] || row[15] || '').toLowerCase()
+      const parentEmail = String(row[42] || row[2] || '').toLowerCase()
       const query = searchQuery.toLowerCase()
-      return name.includes(query) || prn.includes(query)
+      return name.includes(query) || prn.includes(query) || squad.includes(query) || parentName.includes(query) || parentEmail.includes(query)
     })
 
     if (subView === 'rooms') {
@@ -221,9 +224,61 @@ export default function FeedbackTab({ token, apiBase, showToast, batches }) {
   // Get active columns and map cells based on current sub-tab
   const activeViewConfig = useMemo(() => {
     if (subView === 'undertaking') {
+      if (selectedRole === 'faculty') {
+        return {
+          columns: [
+            'Faculty Name', 'Faculty ID', 'Email', 'Squad',
+            'Undertaking Submitted', 'Signed By', 'Signed Date',
+            'Emergency Contact Name', 'Emergency Contact Mobile', 'Emergency Contact Relation',
+            'Blood Group', 'Medical Conditions'
+          ],
+          mapRow: (r) => [
+            r[0], r[1], r[2], r[3],
+            r[4], r[5], r[6],
+            r[15] || '—', r[16] || '—', r[17] || '—',
+            r[18] || '—', r[19] || 'None'
+          ]
+        }
+      }
       return {
-        columns: COLUMNS.slice(0, 20),
-        mapRow: (r) => r.slice(0, 20)
+        columns: [
+          'Student Name',
+          'PRN',
+          'Class / Grade',
+          'School',
+          'Age',
+          'Squad',
+          'Undertaking Submitted',
+          'Signed By',
+          'Signed Date',
+          'Parent Consent',
+          'Parent / Guardian Name',
+          'Relationship',
+          'Parent Mobile',
+          'Parent Email',
+          'Residential Address',
+          'Medical Conditions',
+          'Medical Details'
+        ],
+        mapRow: (r) => [
+          r[0] || '—', // Student Name
+          r[1] || '—', // PRN
+          r[36] || '—', // Class / Grade
+          r[37] || '—', // School
+          r[38] || '—', // Age
+          r[3] || '—', // Squad
+          r[4] === 'Yes' ? 'Yes' : 'No', // Undertaking Submitted
+          r[5] || 'Not Signed', // Signed By
+          r[6] || 'Not Signed', // Signed Date
+          (r[46] === 'Yes' || r[4] === 'Yes') ? 'Yes' : 'No', // Parent Consent
+          r[39] || r[15] || '—', // Parent / Guardian Name
+          r[40] || r[17] || '—', // Relationship
+          r[41] || r[16] || '—', // Parent Mobile
+          r[42] || r[2] || '—', // Parent Email
+          r[43] || '—', // Residential Address
+          r[44] || r[19] || 'None', // Medical Conditions
+          r[45] || 'None' // Medical Details
+        ]
       }
     }
     if (subView === 'tshirts') {
@@ -486,15 +541,29 @@ export default function FeedbackTab({ token, apiBase, showToast, batches }) {
       : filteredData
 
     if (subView === 'undertaking') {
-      columns = [...columns.slice(0, 4), 'Panel', ...columns.slice(4)]
-      mapRow = (r) => {
-        const base = r.slice(0, 20)
-        const panelVal = (() => {
-          const p = r[30]
-          if (!p || String(p).trim() === '' || String(p).trim() === '—') return '—'
-          return String(p).trim()
-        })()
-        return [...base.slice(0, 4), panelVal, ...base.slice(4)]
+      const origMapRow = activeViewConfig.mapRow
+      if (selectedRole === 'faculty') {
+        columns = [...columns.slice(0, 4), 'Panel', ...columns.slice(4)]
+        mapRow = (r) => {
+          const base = origMapRow(r)
+          const panelVal = (() => {
+            const p = r[30]
+            if (!p || String(p).trim() === '' || String(p).trim() === '—') return '—'
+            return String(p).trim()
+          })()
+          return [...base.slice(0, 4), panelVal, ...base.slice(4)]
+        }
+      } else {
+        columns = [...columns.slice(0, 6), 'Panel', ...columns.slice(6)]
+        mapRow = (r) => {
+          const base = origMapRow(r)
+          const panelVal = (() => {
+            const p = r[30]
+            if (!p || String(p).trim() === '' || String(p).trim() === '—') return '—'
+            return String(p).trim()
+          })()
+          return [...base.slice(0, 6), panelVal, ...base.slice(6)]
+        }
       }
     }
 
@@ -1778,7 +1847,7 @@ export default function FeedbackTab({ token, apiBase, showToast, batches }) {
                         const isEmergencyMobileColumn = colName === 'Emergency Contact Mobile'
                         const isEmergencyRelationColumn = colName === 'Emergency Contact Relation'
                         const isFeedbackColumn = colName === 'Pre-LTC Feedback' || colName === 'Post-LTC Feedback' || colName === 'Service & Trainers Feedback'
-                        const isBadgeColumn = (subView === 'undertaking' && (cellIdx === 4 || (cellIdx >= 10 && cellIdx <= 14)))
+                        const isBadgeColumn = (subView === 'undertaking' && (colName === 'Undertaking Submitted' || colName === 'Parent Consent' || cell === 'Yes' || cell === 'No'))
 
                         return (
                           <td key={cellIdx} style={{

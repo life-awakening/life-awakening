@@ -5,30 +5,55 @@ const { sendEmail } = require('../services/emailService');
 const { writeAudit } = require('../utils/helpers');
 
 const TARGET_EMAIL_1 = 'ahsanimamkhan06@gmail.com';
-const TARGET_EMAIL_2 = 'nk120104@gmail.com';
+const TARGET_EMAIL_2 = null;
 
 const MASKED_EMAIL_1 = 'a***6@gmail.com';
-const MASKED_EMAIL_2 = 'n***4@gmail.com';
 
 // Explicit allowlist of application tables to reset.
-// Sensitive infrastructure tables (users with admin/superadmin roles, audit_logs,
-// system_settings, translations, database_reset_otps) are strictly preserved.
+// Sensitive infrastructure and master configuration tables (users with admin/superadmin/faculty roles,
+// LAP timetable schedules, audit_logs, system_settings, translations, email_templates, database_reset_otps)
+// are strictly preserved.
 const APPROVED_APPLICATION_TABLES = [
+  // Parent links
+  'parent_students',
+  // RI Flagging & Tickets
   'ri_red_flags',
+  'ri_orange_flags',
+  'ri_orange_flag_history',
   'ri_tickets',
   'ri_notifications',
+  'ri_panel_media',
+  // RI Academic, Attendance & Forms
+  'ri_evaluation_locks',
+  'ri_evaluations',
   'ri_attendance_locks',
   'ri_attendance',
+  'ri_student_feedbacks',
+  'ri_daily_activity_reports',
+  'ri_community_projects',
+  'ri_problem_identifications',
+  'ri_family_surveys',
+  'ri_institutional_visits',
+  'ri_student_packing_checklists',
+  'ri_preparatory_checklists',
+  'ri_student_forms',
+  'ri_undertakings',
+  'ri_faculty_undertakings',
+  // RI Batches & Panels
   'ri_batch_students',
+  'ri_batch_faculty',
   'ri_panels',
   'ri_villages',
   'ri_batches',
+  // LAP / LTC Batches & Rosters
   'batch_students',
   'batch_faculty',
+  'batch_best_squad',
   'batches',
   'batch_absentees_snapshots',
-  'schedules',
+  'ltc_batch_reports',
   'squad_leaders',
+  // Attendance & Evaluations
   'attendance_records_v2',
   'attendance_sessions',
   'attendance',
@@ -36,6 +61,10 @@ const APPROVED_APPLICATION_TABLES = [
   'student_evaluations',
   'final_evaluation_summary',
   'evaluation_logs',
+  'squad_performance_selections',
+  'squad_grading_results',
+  'squad_grading_audit_logs',
+  // Operations & Feedback
   'red_flags',
   'feedback',
   'documents',
@@ -46,31 +75,20 @@ const APPROVED_APPLICATION_TABLES = [
   'certificates',
   'completion_reports',
   'upload_jobs',
+  // Communication Queues
   'email_queue',
   'whatsapp_queue',
   'whatsapp_campaigns',
   'whatsapp_campaign_logs',
-  'squad_performance_selections',
-  'squad_grading_results',
-  'squad_grading_audit_logs',
   'user_notifications',
   'notifications',
   'password_reset_otps'
 ];
 
 
-// ============================================================================
-// TEMPORARY BYPASS TOGGLE FOR DATABASE RESET DUAL-OTP
-// Set BYPASS_DATABASE_RESET_DUAL_OTP = true to temporarily bypass Dual-OTP verification.
-// Set to false to reactivate strict Dual-OTP email verification.
-// Can also be controlled via process.env.BYPASS_DATABASE_RESET_DUAL_OTP.
-// ============================================================================
-const BYPASS_DATABASE_RESET_DUAL_OTP = process.env.BYPASS_DATABASE_RESET_DUAL_OTP !== undefined
-  ? process.env.BYPASS_DATABASE_RESET_DUAL_OTP === 'true'
-  : true; // Temporarily bypassed as requested by user
 
 /**
- * Step 1: Request Dual-Email OTPs for Database Reset
+ * Step 1: Request Email OTP for Database Reset
  * POST /api/superadmin/reset-database/request-otp
  */
 const requestResetOtp = async (req, res) => {
@@ -84,50 +102,7 @@ const requestResetOtp = async (req, res) => {
     }
 
     const userId = req.user.id;
-
-    // TEMPORARY BYPASS: Directly issue pre-verified resetSessionToken if bypass is enabled
-    if (BYPASS_DATABASE_RESET_DUAL_OTP) {
-      // Invalidate previous unconsumed OTP sessions for this user
-      await pool.query(
-        `UPDATE database_reset_otps SET used = true WHERE user_id = $1 AND used = false`,
-        [userId]
-      );
-
-      // Generate single-use resetSessionToken (32 random bytes = 64 hex chars)
-      const rawResetSessionToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(rawResetSessionToken).digest('hex');
-
-      // Insert pre-verified session record with 15-min expiry
-      await pool.query(
-        `INSERT INTO database_reset_otps (
-          user_id, email_1, otp_1_hash, email_2, otp_2_hash,
-          otp_1_verified, otp_2_verified, reset_session_token_hash, reset_session_expires_at,
-          attempts_left, expires_at, resend_available_at
-        ) VALUES (
-          $1, $2, 'BYPASS', $3, 'BYPASS',
-          true, true, $4, NOW() + INTERVAL '15 minutes',
-          5, NOW() + INTERVAL '15 minutes', NOW() + INTERVAL '60 seconds'
-        )`,
-        [userId, TARGET_EMAIL_1, TARGET_EMAIL_2, tokenHash]
-      );
-
-      writeAudit(
-        userId,
-        req.user.name || 'Superadmin',
-        'DATABASE_RESET_OTP_BYPASS',
-        'database',
-        null,
-        { message: 'Database reset Dual-OTP verification temporarily bypassed' }
-      );
-
-      return res.json({
-        success: true,
-        bypassed: true,
-        resetSessionToken: rawResetSessionToken,
-        message: 'Dual-OTP verification is temporarily bypassed for Super Admin. You may proceed directly to confirmation.',
-        expiresInSeconds: 900
-      });
-    }
+    const targetEmail = req.user.email || TARGET_EMAIL_1;
 
     // 2. Cooldown check: prevent spamming OTP requests within 60 seconds
     const activeRes = await pool.query(
@@ -151,14 +126,13 @@ const requestResetOtp = async (req, res) => {
       }
     }
 
-    // 3. Generate two independent cryptographically secure 6-digit OTPs
-    const rawOtp1 = crypto.randomInt(100000, 1000000).toString();
-    const rawOtp2 = crypto.randomInt(100000, 1000000).toString();
+    // 3. Generate cryptographically secure 6-digit OTP
+    const rawOtp = crypto.randomInt(100000, 1000000).toString();
+    console.log(`[DatabaseReset] Generated Security Verification Code for ${targetEmail}: ${rawOtp}`);
 
-    // 4. Hash both OTPs with bcrypt (never store or log plaintext OTPs)
+    // 4. Hash OTP with bcrypt (never store plaintext OTPs in database)
     const saltRounds = 10;
-    const otp1Hash = await bcrypt.hash(rawOtp1, saltRounds);
-    const otp2Hash = await bcrypt.hash(rawOtp2, saltRounds);
+    const otpHash = await bcrypt.hash(rawOtp, saltRounds);
 
     // 5. Invalidate previous unconsumed OTP sessions for this user
     await pool.query(
@@ -172,65 +146,50 @@ const requestResetOtp = async (req, res) => {
         user_id, email_1, otp_1_hash, email_2, otp_2_hash,
         attempts_left, expires_at, resend_available_at
       ) VALUES (
-        $1, $2, $3, $4, $5,
+        $1, $2, $3, NULL, NULL,
         5, NOW() + INTERVAL '10 minutes', NOW() + INTERVAL '60 seconds'
       )`,
-      [userId, TARGET_EMAIL_1, otp1Hash, TARGET_EMAIL_2, otp2Hash]
+      [userId, targetEmail, otpHash]
     );
 
-    // 7. Dispatch emails asynchronously with high-security notification
+    // 7. Dispatch email asynchronously with high-security notification
     const emailSubject = 'CRITICAL: Database Reset Authorization Verification Code';
-    const emailHtml1 = `
+    const emailHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #fee2e2; border-radius: 8px; background-color: #ffffff;">
         <div style="background-color: #dc2626; color: white; padding: 16px; border-radius: 6px; text-align: center;">
           <h2 style="margin: 0; font-size: 20px;">LTC SYSTEM SECURITY ALERT</h2>
-          <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Database Reset Authorization (Part 1 of 2)</p>
+          <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Database Reset Authorization</p>
         </div>
         <div style="padding: 24px 0;">
           <p style="font-size: 15px; color: #374151;">A permanent database reset request was initiated by Super Admin <strong>${req.user.name || req.user.email || 'Superadmin'}</strong>.</p>
           <div style="background-color: #fef2f2; border: 1px solid #f87171; border-radius: 6px; padding: 16px; margin: 20px 0; text-align: center;">
-            <p style="margin: 0 0 8px 0; font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Security Verification Code #1</p>
-            <span style="font-size: 32px; font-family: monospace; font-weight: bold; letter-spacing: 6px; color: #b91c1c;">${rawOtp1}</span>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Security Verification Code</p>
+            <span style="font-size: 32px; font-family: monospace; font-weight: bold; letter-spacing: 6px; color: #b91c1c;">${rawOtp}</span>
           </div>
           <p style="font-size: 13px; color: #6b7280; line-height: 1.5;">
             • This code expires in <strong>10 minutes</strong>.<br/>
-            • Both Code #1 and Code #2 are required to proceed.<br/>
+            • Enter this verification code in the Danger Zone modal to authorize the reset.<br/>
             • If you did not initiate this request, contact system security immediately.
           </p>
         </div>
       </div>
     `;
 
-    const emailHtml2 = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #fee2e2; border-radius: 8px; background-color: #ffffff;">
-        <div style="background-color: #dc2626; color: white; padding: 16px; border-radius: 6px; text-align: center;">
-          <h2 style="margin: 0; font-size: 20px;">LTC SYSTEM SECURITY ALERT</h2>
-          <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Database Reset Authorization (Part 2 of 2)</p>
-        </div>
-        <div style="padding: 24px 0;">
-          <p style="font-size: 15px; color: #374151;">A permanent database reset request was initiated by Super Admin <strong>${req.user.name || req.user.email || 'Superadmin'}</strong>.</p>
-          <div style="background-color: #fef2f2; border: 1px solid #f87171; border-radius: 6px; padding: 16px; margin: 20px 0; text-align: center;">
-            <p style="margin: 0 0 8px 0; font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Security Verification Code #2</p>
-            <span style="font-size: 32px; font-family: monospace; font-weight: bold; letter-spacing: 6px; color: #b91c1c;">${rawOtp2}</span>
-          </div>
-          <p style="font-size: 13px; color: #6b7280; line-height: 1.5;">
-            • This code expires in <strong>10 minutes</strong>.<br/>
-            • Both Code #1 and Code #2 are required to proceed.<br/>
-            • If you did not initiate this request, contact system security immediately.
-          </p>
-        </div>
-      </div>
-    `;
+    // Send email to authorized administrator
+    await sendEmail({ to: targetEmail, subject: emailSubject, html: emailHtml }).catch(err =>
+      console.error(`[DatabaseReset] Failed sending OTP to ${targetEmail}:`, err.message)
+    );
 
-    // Send emails (log failure gracefully if offline or test, but proceed)
-    await Promise.all([
-      sendEmail({ to: TARGET_EMAIL_1, subject: emailSubject, html: emailHtml1 }).catch(err =>
-        console.error(`[DatabaseReset] Failed sending OTP 1 to ${TARGET_EMAIL_1}:`, err.message)
-      ),
-      sendEmail({ to: TARGET_EMAIL_2, subject: emailSubject, html: emailHtml2 }).catch(err =>
-        console.error(`[DatabaseReset] Failed sending OTP 2 to ${TARGET_EMAIL_2}:`, err.message)
-      )
-    ]);
+    // If targetEmail is different from fallback TARGET_EMAIL_1, send notification to master admin too
+    if (TARGET_EMAIL_1 && targetEmail.toLowerCase() !== TARGET_EMAIL_1.toLowerCase()) {
+      await sendEmail({ to: TARGET_EMAIL_1, subject: emailSubject, html: emailHtml }).catch(err =>
+        console.error(`[DatabaseReset] Failed sending backup OTP to ${TARGET_EMAIL_1}:`, err.message)
+      );
+    }
+
+    const masked = targetEmail.includes('@')
+      ? `${targetEmail[0]}***${targetEmail.slice(targetEmail.indexOf('@') - 1)}`
+      : targetEmail;
 
     // 8. Audit log (NEVER log raw OTP values)
     writeAudit(
@@ -239,14 +198,14 @@ const requestResetOtp = async (req, res) => {
       'DATABASE_RESET_OTP_REQUESTED',
       'database',
       null,
-      { recipients: [MASKED_EMAIL_1, MASKED_EMAIL_2] }
+      { recipient: masked }
     );
 
     return res.json({
       success: true,
-      message: 'Verification codes have been dispatched to authorized administrator emails.',
-      maskedEmail1: MASKED_EMAIL_1,
-      maskedEmail2: MASKED_EMAIL_2,
+      message: `Verification code has been dispatched to ${targetEmail}.`,
+      maskedEmail: masked,
+      targetEmail: targetEmail,
       expiresInSeconds: 600,
       resendCooldownSeconds: 60
     });
@@ -260,7 +219,7 @@ const requestResetOtp = async (req, res) => {
 };
 
 /**
- * Step 2: Verify Both Independent OTPs
+ * Step 2: Verify Single OTP
  * POST /api/superadmin/reset-database/verify-otp
  */
 const verifyResetOtp = async (req, res) => {
@@ -272,52 +231,20 @@ const verifyResetOtp = async (req, res) => {
       });
     }
 
-    // TEMPORARY BYPASS: If Dual-OTP verification is bypassed, issue pre-verified resetSessionToken immediately
-    if (BYPASS_DATABASE_RESET_DUAL_OTP) {
-      await pool.query(
-        `UPDATE database_reset_otps SET used = true WHERE user_id = $1 AND used = false`,
-        [req.user.id]
-      );
-
-      const rawResetSessionToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(rawResetSessionToken).digest('hex');
-
-      await pool.query(
-        `INSERT INTO database_reset_otps (
-          user_id, email_1, otp_1_hash, email_2, otp_2_hash,
-          otp_1_verified, otp_2_verified, reset_session_token_hash, reset_session_expires_at,
-          attempts_left, expires_at, resend_available_at
-        ) VALUES (
-          $1, $2, 'BYPASS', $3, 'BYPASS',
-          true, true, $4, NOW() + INTERVAL '15 minutes',
-          5, NOW() + INTERVAL '15 minutes', NOW() + INTERVAL '60 seconds'
-        )`,
-        [req.user.id, TARGET_EMAIL_1, TARGET_EMAIL_2, tokenHash]
-      );
-
-      return res.json({
-        success: true,
-        bypassed: true,
-        resetSessionToken: rawResetSessionToken,
-        message: 'Dual-OTP verification temporarily bypassed.'
+    const submittedOtp = req.body.otp || req.body.otp1;
+    if (!submittedOtp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Security Verification Code is mandatory.'
       });
     }
 
-    const { otp1, otp2 } = req.body;
-    if (!otp1 || !otp2) {
+    const cleanOtp = String(submittedOtp).trim();
+
+    if (!/^\d{6}$/.test(cleanOtp)) {
       return res.status(400).json({
         success: false,
-        message: 'Both Verification Code #1 and Verification Code #2 are mandatory.'
-      });
-    }
-
-    const cleanOtp1 = String(otp1).trim();
-    const cleanOtp2 = String(otp2).trim();
-
-    if (!/^\d{6}$/.test(cleanOtp1) || !/^\d{6}$/.test(cleanOtp2)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Verification codes must each be 6 digits.'
+        message: 'Verification code must be 6 digits.'
       });
     }
 
@@ -334,7 +261,7 @@ const verifyResetOtp = async (req, res) => {
     if (otpRecordRes.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No active OTP request found or code has expired. Please request new codes.'
+        message: 'No active OTP request found or code has expired. Please request a new code.'
       });
     }
 
@@ -346,15 +273,14 @@ const verifyResetOtp = async (req, res) => {
       await pool.query(`UPDATE database_reset_otps SET used = true WHERE id = $1`, [record.id]);
       return res.status(400).json({
         success: false,
-        message: 'Maximum verification attempts exhausted. Please request new verification codes.'
+        message: 'Maximum verification attempts exhausted. Please request a new verification code.'
       });
     }
 
-    // Verify both OTPs independently
-    const isOtp1Valid = await bcrypt.compare(cleanOtp1, record.otp_1_hash);
-    const isOtp2Valid = await bcrypt.compare(cleanOtp2, record.otp_2_hash);
+    // Verify OTP
+    const isOtpValid = await bcrypt.compare(cleanOtp, record.otp_1_hash);
 
-    if (!isOtp1Valid || !isOtp2Valid) {
+    if (!isOtpValid) {
       const remainingAttempts = record.attempts_left - 1;
       if (remainingAttempts <= 0) {
         // Invalidate record immediately
@@ -372,7 +298,7 @@ const verifyResetOtp = async (req, res) => {
         );
         return res.status(400).json({
           success: false,
-          message: 'Invalid verification codes. Maximum attempts reached. Request new codes.',
+          message: 'Invalid verification code. Maximum attempts reached. Request a new code.',
           attemptsLeft: 0
         });
       }
@@ -393,16 +319,16 @@ const verifyResetOtp = async (req, res) => {
 
       return res.status(400).json({
         success: false,
-        message: 'Invalid verification code(s). Both codes must match.',
+        message: 'Invalid verification code.',
         attemptsLeft: remainingAttempts
       });
     }
 
-    // Both OTPs are valid! Generate single-use resetSessionToken (32 random bytes = 64 hex chars)
+    // OTP is valid! Generate single-use resetSessionToken (32 random bytes = 64 hex chars)
     const rawResetSessionToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawResetSessionToken).digest('hex');
 
-    // Update record with session token hash, 10 min expiry, mark OTPs verified
+    // Update record with session token hash, 10 min expiry, mark OTP verified
     await pool.query(
       `UPDATE database_reset_otps 
        SET reset_session_token_hash = $1,
@@ -513,11 +439,11 @@ const executeDatabaseReset = async (req, res) => {
       });
     }
 
-    if (!sessionRow.otp_1_verified || !sessionRow.otp_2_verified) {
+    if (!sessionRow.otp_1_verified) {
       await client.query('ROLLBACK');
       return res.status(400).json({
         success: false,
-        message: 'Dual-OTP verification incomplete. Reset rejected.'
+        message: 'OTP verification incomplete. Reset rejected.'
       });
     }
 
@@ -561,11 +487,22 @@ const executeDatabaseReset = async (req, res) => {
       }
     }
 
-    // 6. Delete non-admin application users (Strictly preserves Admin, Super Admin, Support, RI Admin, and RI Super Admin)
-    await client.query(`
+    // 6. Delete student and non-administrative application users while strictly preserving:
+    // Admin, Super Admin, Faculty, Support, Gallery, and core administrative accounts
+    const deletedUsersRes = await client.query(`
       DELETE FROM users 
-      WHERE role NOT IN ('admin', 'superadmin', 'superadmin_readonly', 'ri_admin', 'superadmin-ri', 'superadmin_ri_readonly', 'superadmin-ri-readonly', 'gallery', 'support')
-        AND LOWER(email) NOT IN ('superadmin@ri.edu', 'admin@ri.edu.in', 'superadmin@ltc.edu', 'admin@ltc.edu', 'admin@ltc.edu.in', 'gallery@ltc.edu', 'support@mitwpu.edu.in', 'jeeten@mitwpu.edu.in')
+      WHERE role IN ('student', 'parent')
+         OR (
+           role NOT IN ('admin', 'superadmin', 'superadmin_readonly', 'ri_admin', 'superadmin-ri', 'superadmin_ri_readonly', 'superadmin-ri-readonly', 'faculty', 'gallery', 'support')
+           AND (
+             email IS NULL 
+             OR LOWER(email) NOT IN (
+               'superadmin@ri.edu', 'admin@ri.edu.in', 'superadmin@ltc.edu', 
+               'admin@ltc.edu', 'admin@ltc.edu.in', 'gallery@ltc.edu', 
+               'support@mitwpu.edu.in', 'jeeten@mitwpu.edu.in'
+             )
+           )
+         )
     `);
 
     // Ensure core administrative accounts always exist with valid credentials after reset
@@ -646,7 +583,8 @@ const executeDatabaseReset = async (req, res) => {
         JSON.stringify({
           tablesResetCount: safeTablesToReset.length,
           tablesReset: safeTablesToReset,
-          adminAndSupportAccountsPreserved: true,
+          deletedStudentsCount: deletedUsersRes?.rowCount || 0,
+          adminFacultySupportAccountsPreserved: true,
           timestamp: new Date().toISOString()
         })
       ]
@@ -657,7 +595,8 @@ const executeDatabaseReset = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Database reset successfully. Application data reset; Admin, Super Admin, and Support accounts preserved.'
+      deletedStudentsCount: deletedUsersRes?.rowCount || 0,
+      message: `Database reset successfully. Application data and ${deletedUsersRes?.rowCount || 0} student accounts cleared. System administrators, faculty, and application settings preserved.`
     });
   } catch (err) {
     // 13. On Error: Rollback completely
@@ -688,6 +627,5 @@ module.exports = {
   executeDatabaseReset,
   APPROVED_APPLICATION_TABLES,
   TARGET_EMAIL_1,
-  TARGET_EMAIL_2,
-  BYPASS_DATABASE_RESET_DUAL_OTP
+  TARGET_EMAIL_2
 };

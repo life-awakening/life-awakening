@@ -2478,18 +2478,18 @@ const buildAnnexureAttendanceSummaryHtml = (report, batch, { attendanceSummary, 
   const totalStudents = (attendanceSummary?.totals?.total_students) || studentRooms.length || 40;
   const dnrCount = (attendanceSummary?.totals?.dnr_count !== undefined) ? attendanceSummary.totals.dnr_count : studentRooms.filter(s => s.is_dnr).length;
   const activeStudents = Math.max(0, totalStudents - dnrCount);
-  const recordedDaysList = attendanceSummary?.recordedDays || [1, 2, 3, 4, 5];
-  const recordedDaysCount = Array.isArray(recordedDaysList) ? recordedDaysList.length : 5;
+  const recordedDaysList = attendanceSummary?.recordedDays || [1, 2, 3, 4];
+  const recordedDaysCount = Array.isArray(recordedDaysList) ? recordedDaysList.length : 4;
 
   const activities = (attendanceSummary && Array.isArray(attendanceSummary.activities) && attendanceSummary.activities.length > 0)
     ? attendanceSummary.activities
     : [
-      { activity_name: 'Orientation & Fall-in', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: activeStudents, not_attended: 0, is_recorded: true }, day2: { attended: '—', not_attended: '—' }, day3: { attended: '—', not_attended: '—' }, day4: { attended: '—', not_attended: '—' }, day5: { attended: '—', not_attended: '—' } },
-      { activity_name: 'Agriculture & Nature', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true }, day5: { attended: activeStudents, not_attended: 0, is_recorded: true } },
-      { activity_name: 'Physical Fitness & Sports', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true }, day5: { attended: activeStudents, not_attended: 0, is_recorded: true } },
-      { activity_name: 'Team Building & Leadership', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true }, day5: { attended: activeStudents, not_attended: 0, is_recorded: true } },
-      { activity_name: 'Patriotism & Nation Building', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true }, day5: { attended: activeStudents, not_attended: 0, is_recorded: true } },
-      { activity_name: 'Spirituality & Inner Peace', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true }, day5: { attended: activeStudents, not_attended: 0, is_recorded: true } }
+      { activity_name: 'Orientation & Fall-in', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: activeStudents, not_attended: 0, is_recorded: true }, day2: { attended: '—', not_attended: '—' }, day3: { attended: '—', not_attended: '—' }, day4: { attended: '—', not_attended: '—' } },
+      { activity_name: 'Agriculture & Nature', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true } },
+      { activity_name: 'Physical Fitness & Sports', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true } },
+      { activity_name: 'Team Building & Leadership', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true } },
+      { activity_name: 'Patriotism & Nation Building', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true } },
+      { activity_name: 'Spirituality & Inner Peace', total_students: totalStudents, dnr_count: dnrCount, day1: { attended: '—', not_attended: '—' }, day2: { attended: activeStudents, not_attended: 0, is_recorded: true }, day3: { attended: activeStudents, not_attended: 0, is_recorded: true }, day4: { attended: activeStudents, not_attended: 0, is_recorded: true } }
     ];
 
   const formatCell = (val) => (val !== undefined && val !== null && val !== '—') ? val : '—';
@@ -2503,8 +2503,6 @@ const buildAnnexureAttendanceSummaryHtml = (report, batch, { attendanceSummary, 
     const d3Abs = formatCell(act.day3?.not_attended);
     const d4Att = formatCell(act.day4?.attended);
     const d4Abs = formatCell(act.day4?.not_attended);
-    const d5Att = formatCell(act.day5?.attended);
-    const d5Abs = formatCell(act.day5?.not_attended);
 
     return `
       <tr>
@@ -2519,8 +2517,6 @@ const buildAnnexureAttendanceSummaryHtml = (report, batch, { attendanceSummary, 
         <td class="c abs">${d3Abs}</td>
         <td class="c att">${d4Att}</td>
         <td class="c abs">${d4Abs}</td>
-        <td class="c att">${d5Att}</td>
-        <td class="c abs">${d5Abs}</td>
       </tr>
     `;
   }).join('\n');
@@ -2531,8 +2527,7 @@ const buildAnnexureAttendanceSummaryHtml = (report, batch, { attendanceSummary, 
     day1: { attended: activeStudents, not_attended: 0 },
     day2: { attended: activeStudents, not_attended: 0 },
     day3: { attended: activeStudents, not_attended: 0 },
-    day4: { attended: activeStudents, not_attended: 0 },
-    day5: { attended: activeStudents, not_attended: 0 }
+    day4: { attended: activeStudents, not_attended: 0 }
   };
 
   const totalsRowHtml = `
@@ -2548,15 +2543,13 @@ const buildAnnexureAttendanceSummaryHtml = (report, batch, { attendanceSummary, 
       <td class="c abs"><b>${formatCell(totals.day3?.not_attended !== undefined ? totals.day3.not_attended : 0)}</b></td>
       <td class="c att"><b>${formatCell(totals.day4?.attended !== undefined ? totals.day4.attended : activeStudents)}</b></td>
       <td class="c abs"><b>${formatCell(totals.day4?.not_attended !== undefined ? totals.day4.not_attended : 0)}</b></td>
-      <td class="c att"><b>${formatCell(totals.day5?.attended !== undefined ? totals.day5.attended : activeStudents)}</b></td>
-      <td class="c abs"><b>${formatCell(totals.day5?.not_attended !== undefined ? totals.day5.not_attended : 0)}</b></td>
     </tr>
   `;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Annexure 10: 5-Day Attendance Compliance Matrix</title>
+<title>Annexure 10: 4-Day Attendance Compliance Matrix</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--navy:#14305a;--saffron:#e8892b;--mist:#eef3f9;--ink:#1d2733;--line:#c5d1e2;--fill:#2a6fb8;--paper:#fff;--bg:#dfe6ef}
@@ -2634,7 +2627,7 @@ body{margin:0;background:#fff;font:11.5px/1.4 "Public Sans",Arial,sans-serif;col
   </div>
   <div class="body">
     <div class="annexure-header-box">
-      <div class="annexure-title-text">ANNEXURE 10: 5-DAY ATTENDANCE COMPLIANCE MATRIX</div>
+      <div class="annexure-title-text">ANNEXURE 10: 4-DAY ATTENDANCE COMPLIANCE MATRIX</div>
       <div class="annexure-subtitle-text">Official Activity &amp; Pillar Attendance Summary Register &bull; Page 1 of 1</div>
     </div>
 
@@ -2642,10 +2635,10 @@ body{margin:0;background:#fff;font:11.5px/1.4 "Public Sans",Arial,sans-serif;col
       <div class="stat-card"><small>Enrolled Students</small><b>${totalStudents}</b></div>
       <div class="stat-card" style="border-top-color:#c2410c"><small>Day 1 DNR</small><b style="color:#c2410c">${dnrCount}</b></div>
       <div class="stat-card" style="border-top-color:#166534"><small>Active at LTC</small><b style="color:#166534">${activeStudents}</b></div>
-      <div class="stat-card" style="border-top-color:var(--fill)"><small>Recorded Days</small><b style="color:var(--fill)">${recordedDaysCount} / 5</b></div>
+      <div class="stat-card" style="border-top-color:var(--fill)"><small>Recorded Days</small><b style="color:var(--fill)">${recordedDaysCount} / 4</b></div>
     </div>
 
-    <div class="section-badge">5-Day Activity &amp; Pillar Attendance Matrix (Support Panel &amp; Superadmin Standard Format)</div>
+    <div class="section-badge">4-Day Activity &amp; Pillar Attendance Matrix (Support Panel &amp; Superadmin Standard Format)</div>
     <div class="table-wrap">
       <table class="annex-matrix-table">
         <thead>
@@ -2657,10 +2650,8 @@ body{margin:0;background:#fff;font:11.5px/1.4 "Public Sans",Arial,sans-serif;col
             <th colspan="2">Day 2</th>
             <th colspan="2">Day 3</th>
             <th colspan="2">Day 4</th>
-            <th colspan="2">Day 5</th>
           </tr>
           <tr class="th-sub">
-            <th>Att</th><th>Abs</th>
             <th>Att</th><th>Abs</th>
             <th>Att</th><th>Abs</th>
             <th>Att</th><th>Abs</th>

@@ -930,58 +930,44 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
 
       {activeSubTab === 'schedule' && (
         <>
-          {/* Day selection tabs (Clean 3-Day Layout) */}
-          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+          {/* Day selection tabs (Clean Day 1, 2, 3 Layout) */}
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
             {[
-              { day: 1, label: 'Day 1', sub: 'Arrival & Orientation' },
-              { day: 2, label: 'Day 2', sub: 'Immersion & Five Pillars' },
-              { day: 3, label: 'Day 3', sub: 'Valedictory & Departure' }
-            ].map(({ day, label, sub }) => {
+              { day: 1, label: 'Day 1' },
+              { day: 2, label: 'Day 2' },
+              { day: 3, label: 'Day 3' }
+            ].map(({ day, label }) => {
               const isSel = selectedDay === day;
-              const meta = dayMeta[day];
               return (
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
                   style={{
-                    padding: '10px 18px',
-                    borderRadius: '10px',
+                    padding: '8px 20px',
+                    borderRadius: '8px',
                     fontSize: '13px',
                     fontWeight: '700',
-                    border: `1.5px solid ${isSel ? meta.accentColor : '#e2e8f0'}`,
+                    border: `1px solid ${isSel ? '#ea580c' : '#e2e8f0'}`,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease',
-                    background: isSel ? meta.accentColor : '#ffffff',
+                    background: isSel ? '#ea580c' : '#ffffff',
                     color: isSel ? '#ffffff' : '#475569',
-                    boxShadow: isSel ? '0 2px 5px rgba(0,0,0,0.08)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
+                    boxShadow: 'none'
                   }}
                 >
-                  <span>{t(label)}</span>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    padding: '2px 7px',
-                    borderRadius: '6px',
-                    background: isSel ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
-                    color: isSel ? '#ffffff' : '#64748b'
-                  }}>
-                    {t(sub)}
-                  </span>
+                  {t(label)}
                 </button>
               );
             })}
           </div>
 
-          {/* Active Day Banner */}
+          {/* Active Day Banner (Clean, Flat, Non-Glassmorphic) */}
           <div style={{
-            background: currentMeta.bgLight,
-            border: `1px solid ${currentMeta.borderColor}`,
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
             borderRadius: '10px',
-            padding: '12px 16px',
+            padding: '12px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -990,8 +976,8 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
-                background: currentMeta.badgeBg,
-                color: currentMeta.badgeText,
+                background: '#ea580c',
+                color: '#ffffff',
                 padding: '3px 10px',
                 borderRadius: '6px',
                 fontSize: '11.5px',
@@ -999,13 +985,10 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
                 letterSpacing: '0.4px',
                 textTransform: 'uppercase'
               }}>
-                DAY – {selectedDay}
-              </span>
-              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0f172a' }}>
-                {currentMeta.tag}
+                Day {selectedDay}
               </span>
             </div>
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+            <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '600' }}>
               {detailedSchedule[selectedDay]?.length || 0} {t("scheduled sessions")}
             </span>
           </div>
