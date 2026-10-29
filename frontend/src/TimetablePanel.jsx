@@ -26,7 +26,7 @@ export function calculateLrpDay(startDateStr, currentDateObj = new Date()) {
     let currentLrpDay = diffDays + 1;
 
     if (currentLrpDay < 1) currentLrpDay = 1;
-    if (currentLrpDay > 3) currentLrpDay = 3;
+    if (currentLrpDay > 4) currentLrpDay = 4;
 
     return currentLrpDay;
   } catch (err) {
@@ -62,7 +62,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
             const calculatedDay = calculateLrpDay(b.start_date_str || b.start_date);
             setSelectedDay(calculatedDay);
             setCompactSelectedDay(calculatedDay);
-          } else if (data && data.currentDay >= 1 && data.currentDay <= 3) {
+          } else if (data && data.currentDay >= 1 && data.currentDay <= 4) {
             setSelectedDay(data.currentDay);
             setCompactSelectedDay(data.currentDay);
           }
@@ -85,19 +85,19 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
     }
   }, [activeBatch, activeBatchInfo]);
 
-  // Summary data for compact view (Day 1 to 3)
+  // Summary data for compact view (Day 1 to 4)
   const compactTimetableData = [
     {
       day: 1,
       name: "Day 1",
       activity1: {
-        time: "11:15 AM - 12:00 PM",
+        time: "05:45 PM - 06:30 PM",
         duration: "45 Min",
-        title: "Allotment of room and accommodation",
+        title: "Allotment of room and accommodation and bag checking",
         location: "Hostels / Accommodation"
       },
       activity2: {
-        time: "02:15 PM - 03:00 PM",
+        time: "06:30 PM - 07:15 PM",
         duration: "45 Min",
         title: "Orientation for students for Life Awakening Program",
         location: "Orientation Hall / Gazebo"
@@ -107,42 +107,58 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
       day: 2,
       name: "Day 2",
       activity1: {
-        time: "06:00 AM - 07:30 AM",
-        duration: "90 Min",
-        title: "National Song, Drills & Sports",
+        time: "07:00 AM - 08:00 AM",
+        duration: "60 Min",
+        title: "Patriotism & Nation Building",
         location: "Sports Ground & Drill Course"
       },
       activity2: {
-        time: "10:00 AM - 11:30 AM",
-        duration: "90 Min",
-        title: "Team Building & Agriculture (Five Pillars)",
-        location: "Farm & Activity Area"
+        time: "10:15 AM - 11:30 AM",
+        duration: "75 Min",
+        title: "Team Building & Leadership Activity",
+        location: "Gazebo & Activity Grounds"
       }
     },
     {
       day: 3,
       name: "Day 3",
       activity1: {
-        time: "07:15 AM - 08:15 AM",
+        time: "07:00 AM - 08:00 AM",
         duration: "60 Min",
-        title: "Feedback Form",
-        location: "Computer Lab / Hall"
+        title: "Patriotism & Nation Building",
+        location: "Sports Ground & Drill Course"
       },
       activity2: {
-        time: "09:30 AM - 11:30 AM",
-        duration: "120 Min",
-        title: "Valedictory Function & Awards",
+        time: "04:00 PM - 05:00 PM",
+        duration: "60 Min",
+        title: "Agriculture and Nature Activity (Polyhouse)",
+        location: "LTC Polyhouse & Farm Area"
+      }
+    },
+    {
+      day: 4,
+      name: "Day 4",
+      activity1: {
+        time: "08:15 AM - 08:35 AM",
+        duration: "20 Min",
+        title: "Group Photograph",
+        location: "Main Campus Grounds / Monument"
+      },
+      activity2: {
+        time: "10:25 AM - 11:00 AM",
+        duration: "35 Min",
+        title: "Award and Certificate Distribution",
         location: "Sanskruti Hall / Amphitheatre"
       }
     }
   ]
 
-  // Detailed 3-Day LAP Schedule matching reference chart
+  // Official LAP Schedule matching LAP-Program-Schedule.pdf
   const detailedSchedule = {
     1: [
       {
-        time: "11:00 AM - 11:15 AM",
-        duration: "15 Min",
+        time: "05:00 PM - 05:45 PM",
+        duration: "45 Min",
         title: "Arrival at Life Transformation Centre",
         location: "Reception / Main Gate",
         dress: "Casual Dress",
@@ -150,104 +166,21 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         type: "registration"
       },
       {
-        time: "11:15 AM - 12:00 PM",
+        time: "05:45 PM - 06:30 PM",
         duration: "45 Min",
-        title: "Allotment of room and accommodation",
+        title: "Allotment of room and accommodation and bag checking",
         location: "Hostels / Accommodation",
         dress: "Casual Dress",
-        description: "Allotment of room and accommodation, settling in, and standard bag checking.",
+        description: "Allotment of room and accommodation, settling in, and bag checking.",
         type: "registration"
       },
       {
-        time: "12:00 PM - 01:00 PM",
-        duration: "60 Min",
-        title: "Lunch",
-        location: "Dining Hall",
-        dress: "Casual Dress",
-        description: "Wholesome lunch served to students.",
-        type: "meals"
-      },
-      {
-        time: "01:00 PM - 02:00 PM",
-        duration: "60 Min",
-        title: "Getting Fresh and Rest",
-        location: "Hostel Rooms",
-        dress: "Casual Dress",
-        description: "Rest period and freshening up in assigned rooms.",
-        type: "rest"
-      },
-      {
-        time: "02:00 PM - 02:15 PM",
-        duration: "15 Min",
-        title: "Transition",
-        location: "Campus",
-        dress: "Casual Dress",
-        description: "Transition to orientation venue.",
-        type: "rest"
-      },
-      {
-        time: "02:15 PM - 03:00 PM",
+        time: "06:30 PM - 07:15 PM",
         duration: "45 Min",
         title: "Orientation for students for Life Awakening Program",
         location: "Orientation Hall / Gazebo",
         dress: "Casual Dress",
-        description: "Orientation briefing on Life Awakening Program guidelines, code of conduct, and schedule.",
-        type: "academic"
-      },
-      {
-        time: "03:00 PM - 04:30 PM",
-        duration: "90 Min",
-        title: "Team Building & Leadership / Agriculture and Nature",
-        location: "Gazebo & Farm Area",
-        dress: "Sports T-Shirt & Track Pants",
-        description: "Parallel groups: Team Building & Leadership (Icebreaker, Untangle Yourself) and Agriculture & Nature (Agri Tour, Seed Ball Making).",
-        type: "academic",
-        groupTrack: "Team Building & Leadership | Agriculture and Nature"
-      },
-      {
-        time: "04:30 PM - 05:00 PM",
-        duration: "30 Min",
-        title: "Snacks",
-        location: "Dining Area",
-        dress: "Sports Attire",
-        description: "Healthy evening refreshments and snacks.",
-        type: "meals"
-      },
-      {
-        time: "05:00 PM - 05:15 PM",
-        duration: "15 Min",
-        title: "Transition",
-        location: "Grounds",
-        dress: "Sports Attire",
-        description: "Move to grounds for patriotism drills and physical fitness.",
-        type: "rest"
-      },
-      {
-        time: "05:15 PM - 06:30 PM",
-        duration: "75 Min",
-        title: "Patriotism & Nation Building / Physical Fitness Sports",
-        location: "Grounds & Drill Course",
-        dress: "Sports Attire & Shoes",
-        description: "Living a Soldier's Experience (Army Drill, Zig Zag Balance, Commando Crawl) & Traditional Indian Sports (Rumal Pani, Andhali Koshimbir).",
-        type: "fitness",
-        groupTrack: "Patriotism & Nation Building | Physical Fitness Sports"
-      },
-      {
-        time: "06:30 PM - 06:45 PM",
-        duration: "15 Min",
-        title: "Getting Fresh and Rest",
-        location: "Hostel Rooms",
-        dress: "Casual Dress",
-        description: "Freshen up and wash up after outdoor activities.",
-        type: "rest"
-      },
-      {
-        time: "06:45 PM - 07:15 PM",
-        duration: "60 Min",
-        title: "Spirituality & Peace",
-        location: "Gazebo / Meditation Hall",
-        dress: "Comfortable Attire",
-        description: "Nature Screen Mirroring, Soham Chanting, and Guided Breathing exercises.",
+        description: "Orientation briefing for students on Life Awakening Program guidelines, code of conduct, and schedule.",
         type: "academic"
       },
       {
@@ -256,101 +189,120 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         title: "Transition",
         location: "Campus",
         dress: "Casual Dress",
-        description: "Move to dining hall.",
+        description: "Transition to dining hall.",
         type: "rest"
       },
       {
         time: "07:30 PM - 08:30 PM",
-        duration: "30 Min",
+        duration: "60 Min",
         title: "Dinner",
         location: "Dining Hall",
         dress: "Casual Dress",
-        description: "Hot nutritious dinner served.",
+        description: "Wholesome and nutritious dinner served to students.",
         type: "meals"
       },
       {
         time: "08:30 PM - 09:00 PM",
         duration: "30 Min",
+        title: "Mobile Collection",
+        location: "Hostels / Admin Bay",
+        dress: "Casual Dress",
+        description: "Safe collection and secure custody of student mobile devices.",
+        type: "registration"
+      },
+      {
+        time: "09:00 PM - 09:30 PM",
+        duration: "30 Min",
         title: "Prepare for Bedtime",
         location: "Hostel Rooms",
         dress: "Night Dress",
-        description: "Wind down, reflect on the day, and prepare for rest.",
+        description: "Prepare for bedtime, personal hygiene, and daily reflection.",
+        type: "rest"
+      },
+      {
+        time: "09:30 PM",
+        duration: "—",
+        title: "Lights Off",
+        location: "Hostels",
+        dress: "Night Dress",
+        description: "Curfew and lights out.",
         type: "rest"
       }
     ],
     2: [
       {
-        time: "05:00 AM - 06:00 AM",
+        time: "06:00 AM - 07:00 AM",
         duration: "60 Min",
         title: "Getting Ready for the Day",
-        location: "Hostel",
+        location: "Hostel Rooms",
         dress: "Sports Attire",
         description: "Morning wakeup, personal hygiene, and getting dressed for morning drills.",
         type: "rest"
       },
       {
-        time: "06:00 AM - 07:30 AM",
-        duration: "90 Min",
-        title: "National Song, Warm Up Exercises, Patriotism & Nation Building, Physical Fitness and Sports",
+        time: "07:00 AM - 08:00 AM",
+        duration: "60 Min",
+        title: "Patriotism & Nation Building",
         location: "Sports Ground & Drill Course",
         dress: "Sports Attire & Shoes",
-        description: "National Song, Warm Up Exercises, Patriotism Drills (Commando Crawl, Mission Rescue, Tarzan Swing), and Physical Fitness & Sports.",
+        description: "1. Assembly & Reporting by Squad Captains, 2. National Song, 3. Light Stretching Exercise, 4. Aerobic Exercise (1 to 3), 5. Jogging & Running (1 Km), 6. Obstacle Training (Group 2 Briefing, Demonstration & Practice), 7. Cooling Down.",
+        groupTrack: "Group 2 Obstacle Training | Briefing & Practice",
         type: "fitness"
       },
       {
-        time: "07:30 AM - 07:50 AM",
+        time: "08:00 AM - 08:20 AM",
         duration: "20 Min",
         title: "Transition and Dress change",
-        location: "Hostel",
+        location: "Hostel Rooms",
         dress: "Change to Yoga Dress",
         description: "Transition to hostel rooms and change into comfortable yoga dress.",
         type: "rest"
       },
       {
-        time: "07:50 AM - 08:50 AM",
+        time: "08:20 AM - 09:20 AM",
         duration: "60 Min",
         title: "Spirituality and Peace",
         location: "Gazebo / Sanskruti Hall",
         dress: "Yoga Dress",
-        description: "Warm Up, Balance & Animal Postures, Surya Namaskar, and Guided Meditation.",
+        description: "Standing prayer & Om Chanting. A. Joint movement with props, B. Surya Namaskar with Mantra, C. Animal Flow (Tree pose, Plum tree pose, Kite pose, Triangle with wheel, Elephant forward movement, Kangaroo jump, Rabbit pose, Butterfly, Half fish, Child pose, Wind release, Shavasana - Yog Nidra, Anulom Vilom, Bhramari Pranayam, Shanti Path).",
         type: "academic"
       },
       {
-        time: "08:50 AM - 09:00 AM",
+        time: "09:20 AM - 09:30 AM",
         duration: "10 Min",
         title: "Transition",
         location: "Campus",
         dress: "Yoga Dress",
-        description: "Move to breakfast hall.",
+        description: "Move to dining hall.",
         type: "rest"
       },
       {
-        time: "09:00 AM - 09:45 AM",
-        duration: "45 Min",
+        time: "09:30 AM - 10:00 AM",
+        duration: "30 Min",
         title: "Breakfast",
         location: "Dining Hall",
         dress: "Yoga Dress",
-        description: "Wholesome morning breakfast.",
+        description: "Wholesome and energizing breakfast.",
         type: "meals"
       },
       {
-        time: "09:45 AM - 10:00 AM",
+        time: "10:00 AM - 10:15 AM",
         duration: "15 Min",
         title: "Transition",
         location: "Campus",
-        dress: "Collar T-Shirt & Track Pants",
-        description: "Transition to morning activity zones.",
+        dress: "Sports T-Shirt & Track Pants",
+        description: "Transition to team building and leadership zones.",
         type: "rest"
       },
       {
-        time: "10:00 AM - 11:30 AM",
-        duration: "90 Min",
-        title: "Team Building & Leadership / Agriculture and Nature",
-        location: "Farm & Activity Area",
-        dress: "Collar T-Shirt & Track Pants",
-        description: "Team Building (Bridge, Longest Shadow) and Agriculture and Nature (Farm Visit, Crops & Soil Experience Zone).",
-        type: "academic",
-        groupTrack: "Team Building & Leadership | Agriculture and Nature"
+        time: "10:15 AM - 11:30 AM",
+        duration: "75 Min",
+        title: "Team Building & Leadership Activity",
+        location: "Gazebo & Activity Grounds",
+        dress: "Sports T-Shirt & Track Pants",
+        description: "Interactive team building sessions: 1. Human Knot, 2. Queen Demand, 3. Bridge.",
+        groupTrack: "1. Human Knot | 2. Queen Demand | 3. Bridge",
+        type: "academic"
       },
       {
         time: "11:30 AM - 12:30 PM",
@@ -358,7 +310,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         title: "Personal Hygiene – Bath and Freshening Up",
         location: "Hostel Rooms",
         dress: "Casual Dress",
-        description: "Bath, personal hygiene, and rest.",
+        description: "Bath, personal hygiene, freshening up, and rest.",
         type: "rest"
       },
       {
@@ -367,7 +319,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         title: "Lunch",
         location: "Dining Hall",
         dress: "Casual Dress",
-        description: "Wholesome midday meal.",
+        description: "Wholesome and nutritious lunch.",
         type: "meals"
       },
       {
@@ -376,85 +328,76 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         title: "Keep your Living Space Clean",
         location: "Hostel Rooms",
         dress: "Casual Dress",
-        description: "Room organization, cleaning living space, and fostering discipline.",
+        description: "Room organization, tidying living spaces, and discipline fostering.",
         type: "academic"
       },
       {
-        time: "02:00 PM - 03:00 PM",
-        duration: "60 Min",
+        time: "02:00 PM - 02:50 PM",
+        duration: "50 Min",
         title: "Book Reading, Diary Writing, Resting (Mauna)",
         location: "Hostel / Reading Area",
         dress: "Casual Dress",
-        description: "Quiet Mauna (silence), reflective diary writing, book reading, and rest.",
+        description: "Quiet Mauna (reflective silence), personal diary reflection, reading, and rest.",
         type: "rest"
       },
       {
-        time: "03:00 PM - 03:15 PM",
-        duration: "15 Min",
-        title: "Transition",
-        location: "Campus",
+        time: "02:50 PM - 03:30 PM",
+        duration: "40 Min",
+        title: "Expression Activity (Drawing Sheet)",
+        location: "Activity Hall / Gazebo",
         dress: "Casual Dress",
-        description: "Transition to storytelling venue.",
-        type: "rest"
-      },
-      {
-        time: "03:15 PM - 04:00 PM",
-        duration: "45 Min",
-        title: "Story Telling",
-        location: "Gazebo / Amphitheatre",
-        dress: "Casual Dress",
-        description: "Inspiring moral and values-based storytelling session.",
+        description: "Creative expression activity on drawing sheets sharing reflections and emotions.",
         type: "academic"
       },
       {
-        time: "04:00 PM - 04:30 PM",
+        time: "03:30 PM - 04:00 PM",
         duration: "30 Min",
         title: "Snack Break",
         location: "Dining Hall",
         dress: "Sports Attire",
-        description: "Evening snack break and healthy refreshments.",
+        description: "Healthy evening refreshments and snack break.",
         type: "meals"
       },
       {
-        time: "04:30 PM - 06:00 PM",
-        duration: "90 Min",
-        title: "Agriculture and Nature / Team Building & Leadership",
-        location: "Farm & Activity Area",
+        time: "04:00 PM - 05:00 PM",
+        duration: "60 Min",
+        title: "Agriculture and Nature Activity",
+        location: "LTC Farm & Experience Zone",
         dress: "Sports Attire & Shoes",
-        description: "Swap the Group: Swapped groups participate in Agriculture & Nature and Team Building & Leadership.",
-        type: "academic",
-        groupTrack: "Swap the Group: Agriculture and Nature <-> Team Building & Leadership"
+        description: "1) Farm Visit, 2) Veterinary & Livestock experience, 3) Experience Zone Visit, 4) Tractor and Agricultural Implements Tour.",
+        groupTrack: "Farm Visit | Veterinary & Livestock | Tractor Tour",
+        type: "academic"
       },
       {
-        time: "06:00 PM - 06:15 PM",
+        time: "05:00 PM - 05:15 PM",
         duration: "15 Min",
         title: "Transition",
-        location: "Grounds",
-        dress: "Sports Attire",
-        description: "Move to evening sports grounds.",
-        type: "rest"
-      },
-      {
-        time: "06:15 PM - 07:15 PM",
-        duration: "60 Min",
-        title: "Physical Fitness Sports Activities / Patriotism & Nation Building",
         location: "Sports Grounds",
         dress: "Sports Attire & Shoes",
-        description: "Swap Group: Swapped groups participate in Physical Fitness Sports Activities and Patriotism Drills.",
-        type: "fitness",
-        groupTrack: "Swap Group: Physical Fitness Sports Activities <-> Patriotism & Nation Building"
-      },
-      {
-        time: "07:15 PM - 07:30 PM",
-        duration: "15 Min",
-        title: "Transition",
-        location: "Campus",
-        dress: "Casual Dress",
-        description: "Wash up and transition to dinner.",
+        description: "Transition to sports ground.",
         type: "rest"
       },
       {
-        time: "07:30 PM - 08:30 PM",
+        time: "05:15 PM - 06:30 PM",
+        duration: "75 Min",
+        title: "Physical Fitness Sports Activities",
+        location: "Sports Grounds",
+        dress: "Sports Attire & Shoes",
+        description: "Traditional Indian physical fitness sports: 1. Kho-Kho, 2. Dodgeball, 3. Rumal Pani.",
+        groupTrack: "1. Kho-Kho | 2. Dodgeball | 3. Rumal Pani",
+        type: "fitness"
+      },
+      {
+        time: "06:30 PM - 07:00 PM",
+        duration: "30 Min",
+        title: "Transition and Fresh",
+        location: "Hostel Rooms",
+        dress: "Casual Dress",
+        description: "Freshen up, wash up, and transition to dinner hall.",
+        type: "rest"
+      },
+      {
+        time: "07:00 PM - 08:00 PM",
         duration: "60 Min",
         title: "Dinner",
         location: "Dining Hall",
@@ -463,19 +406,28 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         type: "meals"
       },
       {
-        time: "08:30 PM - 09:00 PM",
-        duration: "30 Min",
-        title: "Prepare for Bedtime",
-        location: "Hostel Rooms",
-        dress: "Night Dress",
-        description: "Prepare for bedtime and personal reflection.",
+        time: "08:00 PM - 08:15 PM",
+        duration: "15 Min",
+        title: "Transition",
+        location: "Amphitheatre",
+        dress: "Casual Dress",
+        description: "Transition to amphitheatre for evening movie time.",
         type: "rest"
       },
       {
-        time: "09:00 PM",
+        time: "08:15 PM - 09:30 PM",
+        duration: "75 Min",
+        title: "Movie Time at Amphitheatre",
+        location: "Amphitheatre",
+        dress: "Casual Dress",
+        description: "Inspirational movie screening and community gathering at the Open Amphitheatre.",
+        type: "academic"
+      },
+      {
+        time: "09:40 PM",
         duration: "—",
         title: "Lights Off",
-        location: "Hostel",
+        location: "Hostels",
         dress: "Night Dress",
         description: "Curfew and lights out.",
         type: "rest"
@@ -483,80 +435,311 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
     ],
     3: [
       {
-        time: "05:00 AM - 06:00 AM",
-        duration: "60 Min",
-        title: "Getting Ready for the Day",
-        location: "Hostel",
-        dress: "Formal / Clean Attire",
-        description: "Morning wakeup, packing personal belongings, and preparing for the final day.",
-        type: "rest"
-      },
-      {
         time: "06:00 AM - 07:00 AM",
         duration: "60 Min",
-        title: "Spirituality and Peace",
-        location: "Gazebo / Amphitheatre",
-        dress: "Formal / Clean Attire",
-        description: "Morning Spirituality and Peace session: meditation, mindfulness, and reflections.",
-        type: "academic"
-      },
-      {
-        time: "07:00 AM - 07:15 AM",
-        duration: "15 Min",
-        title: "Transition",
-        location: "Campus",
-        dress: "Formal / Clean Attire",
-        description: "Transition to feedback session.",
+        title: "Getting Ready for the Day",
+        location: "Hostel Rooms",
+        dress: "Sports Attire",
+        description: "Morning wakeup, personal hygiene, and getting ready for the day.",
         type: "rest"
       },
       {
-        time: "07:15 AM - 08:15 AM",
+        time: "07:00 AM - 08:00 AM",
         duration: "60 Min",
-        title: "Feedback Form",
-        location: "Computer Lab / Hall / Mobile Panel",
-        dress: "Formal / Clean Attire",
-        description: "Submission of Student Service & Trainer Feedback Form.",
+        title: "Patriotism & Nation Building",
+        location: "Sports Ground & Drill Course",
+        dress: "Sports Attire & Shoes",
+        description: "1. Assembly & Reporting by Squad Captains, 2. National Song, 3. Light Stretching Exercise, 4. Aerobic Exercise (1 to 4), 5. Jogging & Running (1.2 Km), 6. Obstacle Training (Group 1 Briefing, Demonstration & Practice), 7. Cooling Down.",
+        groupTrack: "Group 1 Obstacle Training | Briefing & Practice",
+        type: "fitness"
+      },
+      {
+        time: "08:00 AM - 08:20 AM",
+        duration: "20 Min",
+        title: "Transition and Dress change",
+        location: "Hostel Rooms",
+        dress: "Change to Yoga Dress",
+        description: "Transition to hostel rooms and change into comfortable yoga dress.",
+        type: "rest"
+      },
+      {
+        time: "08:20 AM - 09:20 AM",
+        duration: "60 Min",
+        title: "Spirituality and Peace",
+        location: "Gazebo / Sanskruti Hall",
+        dress: "Yoga Dress",
+        description: "Prayer & Om Chanting. Joint movement with props, A. Surya Namaskar with Mantra, B. Animal Flow and Adventure (Tree pose, Goddess asana, Flying bird jump, Duck walk, Forward-side bend with wheel, Cat & Cow variation, Half fish, Camel pose, Rabbit pose, Puppy pose, Child pose, Wind release, Crocodile pose, Shavasana - Yog Nidra, Anulom Vilom, Balloon breath, Om Chanting, Shanti Path).",
         type: "academic"
       },
       {
-        time: "08:15 AM - 09:15 AM",
-        duration: "60 Min",
+        time: "09:20 AM - 09:30 AM",
+        duration: "10 Min",
+        title: "Transition",
+        location: "Campus",
+        dress: "Yoga Dress",
+        description: "Move to breakfast hall.",
+        type: "rest"
+      },
+      {
+        time: "09:30 AM - 10:00 AM",
+        duration: "30 Min",
         title: "Breakfast",
         location: "Dining Hall",
-        dress: "Formal / Clean Attire",
-        description: "Farewell breakfast with teachers and peers.",
+        dress: "Yoga Dress",
+        description: "Wholesome morning breakfast.",
         type: "meals"
       },
       {
-        time: "09:15 AM - 09:30 AM",
+        time: "10:00 AM - 10:15 AM",
         duration: "15 Min",
         title: "Transition",
         location: "Campus",
-        dress: "Formal / Clean Attire",
-        description: "Transition to Valedictory Hall.",
+        dress: "Sports T-Shirt & Track Pants",
+        description: "Transition to morning team building activity area.",
         type: "rest"
       },
       {
-        time: "09:30 AM - 11:30 AM",
-        duration: "120 Min",
-        title: "Valedictory Function & Awards",
-        location: "Sanskruti Hall / Amphitheatre",
-        dress: "Formal / Clean Attire",
-        description: "Valedictory address, student reflections, awards ceremony, and certificate distribution.",
+        time: "10:15 AM - 11:30 AM",
+        duration: "75 Min",
+        title: "Team Building & Leadership Activity",
+        location: "Gazebo & Activity Grounds",
+        dress: "Sports T-Shirt & Track Pants",
+        description: "Interactive leadership activities: 1. Ball and Cup, 2. Dolphin, 3. Stacking Relay.",
+        groupTrack: "1. Ball and Cup | 2. Dolphin | 3. Stacking Relay",
         type: "academic"
       },
       {
-        time: "11:30 AM - 12:00 PM",
+        time: "11:30 AM - 12:30 PM",
+        duration: "60 Min",
+        title: "Personal Hygiene – Bath and Freshening Up",
+        location: "Hostel Rooms",
+        dress: "Casual Dress",
+        description: "Bath, personal hygiene, and freshening up in rooms.",
+        type: "rest"
+      },
+      {
+        time: "12:30 PM - 01:30 PM",
+        duration: "60 Min",
+        title: "Lunch",
+        location: "Dining Hall",
+        dress: "Casual Dress",
+        description: "Wholesome midday meal served in dining hall.",
+        type: "meals"
+      },
+      {
+        time: "01:30 PM - 02:00 PM",
         duration: "30 Min",
-        title: "Packing and Check Out",
-        location: "Hostels & Admin Area",
+        title: "Keep your Living Space Clean",
+        location: "Hostel Rooms",
+        dress: "Casual Dress",
+        description: "Discipline, tidy living spaces, bed making, and room care.",
+        type: "academic"
+      },
+      {
+        time: "02:00 PM - 02:50 PM",
+        duration: "50 Min",
+        title: "Book Reading, Diary Writing, Resting (Mauna)",
+        location: "Hostel / Reading Area",
+        dress: "Casual Dress",
+        description: "Quiet Mauna (reflective silence), personal diary writing, book reading, and rest.",
+        type: "rest"
+      },
+      {
+        time: "02:50 PM - 03:30 PM",
+        duration: "40 Min",
+        title: "Expression Activity (Drawing Sheet)",
+        location: "Activity Hall / Gazebo",
+        dress: "Casual Dress",
+        description: "Creative student expression on drawing sheets sharing reflections, insights, and emotions.",
+        type: "academic"
+      },
+      {
+        time: "03:30 PM - 04:00 PM",
+        duration: "30 Min",
+        title: "Snack Break",
+        location: "Dining Hall",
+        dress: "Sports Attire",
+        description: "Evening snack break and healthy refreshments.",
+        type: "meals"
+      },
+      {
+        time: "04:00 PM - 05:00 PM",
+        duration: "60 Min",
+        title: "Agriculture and Nature Activity",
+        location: "LTC Polyhouse & Farm Area",
+        dress: "Sports Attire & Shoes",
+        description: "1) Visit to LTC Polyhouse, 2) To know the Irrigation System in Polyhouse, 3) Filling of Seedling Pro-Trays with Cocopeat in Polyhouse and sowing the seeds.",
+        groupTrack: "Polyhouse Visit | Irrigation System | Seedling Sowing",
+        type: "academic"
+      },
+      {
+        time: "05:00 PM - 05:15 PM",
+        duration: "15 Min",
+        title: "Transition",
+        location: "Sports Grounds",
+        dress: "Sports Attire",
+        description: "Move to grounds for sports activities.",
+        type: "rest"
+      },
+      {
+        time: "05:15 PM - 06:30 PM",
+        duration: "75 Min",
+        title: "Physical Fitness Sports Activities",
+        location: "Sports Grounds",
+        dress: "Sports Attire & Shoes",
+        description: "Traditional Indian physical fitness sports: 1. Aatya Pattya, 2. Langadi, 3. Andhali Koshimbir.",
+        groupTrack: "1. Aatya Pattya | 2. Langadi | 3. Andhali Koshimbir",
+        type: "fitness"
+      },
+      {
+        time: "06:30 PM - 07:00 PM",
+        duration: "30 Min",
+        title: "Transition and Fresh",
+        location: "Hostel Rooms",
+        dress: "Casual Dress",
+        description: "Wash up and freshen up before dinner.",
+        type: "rest"
+      },
+      {
+        time: "07:00 PM - 08:00 PM",
+        duration: "60 Min",
+        title: "Dinner",
+        location: "Dining Hall",
+        dress: "Casual Dress",
+        description: "Nutritious dinner served in dining hall.",
+        type: "meals"
+      },
+      {
+        time: "08:00 PM - 08:15 PM",
+        duration: "15 Min",
+        title: "Transition",
+        location: "Amphitheatre",
+        dress: "Casual Dress",
+        description: "Transition to amphitheatre for cultural celebration.",
+        type: "rest"
+      },
+      {
+        time: "08:15 PM - 09:30 PM",
+        duration: "75 Min",
+        title: "Cultural Activity at Amphitheatre",
+        location: "Amphitheatre",
+        dress: "Casual Dress",
+        description: "Vibrant cultural evening: student performances, musical talent, storytelling, and celebration.",
+        type: "academic"
+      },
+      {
+        time: "09:40 PM",
+        duration: "—",
+        title: "Lights Off",
+        location: "Hostels",
+        dress: "Night Dress",
+        description: "Curfew and lights out.",
+        type: "rest"
+      }
+    ],
+    4: [
+      {
+        time: "06:00 AM - 07:00 AM",
+        duration: "60 Min",
+        title: "Getting Ready for the Day",
+        location: "Hostel Rooms",
+        dress: "Sports / Clean Attire",
+        description: "Morning wakeup, personal hygiene, and getting ready for the final day.",
+        type: "rest"
+      },
+      {
+        time: "07:00 AM - 08:00 AM",
+        duration: "60 Min",
+        title: "Spirituality and Peace Session",
+        location: "Gazebo / Amphitheatre",
+        dress: "Clean Attire",
+        description: "Prayer, Om Chanting, Wish - gratitude Tree activity, Sound healing session, Om Chanting, Shanti Path.",
+        type: "academic"
+      },
+      {
+        time: "08:00 AM - 08:15 AM",
+        duration: "15 Min",
+        title: "Transition",
+        location: "Campus",
+        dress: "Program / Formal Attire",
+        description: "Transition to group photograph venue.",
+        type: "rest"
+      },
+      {
+        time: "08:15 AM - 08:35 AM",
+        duration: "20 Min",
+        title: "Group Photograph",
+        location: "Main Campus Grounds / Monument",
+        dress: "Program Attire",
+        description: "Official commemorative batch group photograph with faculty, trainers, and coordinators.",
+        type: "academic"
+      },
+      {
+        time: "08:35 AM - 08:45 AM",
+        duration: "10 Min",
+        title: "Transition to Ground",
+        location: "Sports Ground",
+        dress: "Sports Attire & Shoes",
+        description: "Transition to activity ground.",
+        type: "rest"
+      },
+      {
+        time: "08:45 AM - 09:30 AM",
+        duration: "45 Min",
+        title: "Exercise and Competition",
+        location: "Sports Ground",
+        dress: "Sports Attire & Shoes",
+        description: "Concluding squad exercise drills, friendly challenge, and sports wrap-up.",
+        type: "fitness"
+      },
+      {
+        time: "09:30 AM - 09:40 AM",
+        duration: "10 Min",
+        title: "Transition",
+        location: "Campus",
+        dress: "Clean Attire",
+        description: "Transition to breakfast hall.",
+        type: "rest"
+      },
+      {
+        time: "09:40 AM - 10:15 AM",
+        duration: "35 Min",
+        title: "Breakfast",
+        location: "Dining Hall",
+        dress: "Clean Attire",
+        description: "Wholesome farewell breakfast with peers and teachers.",
+        type: "meals"
+      },
+      {
+        time: "10:15 AM - 10:25 AM",
+        duration: "10 Min",
+        title: "Transition",
+        location: "Sanskruti Hall / Amphitheatre",
+        dress: "Formal / Clean Attire",
+        description: "Transition to Valedictory and Award ceremony hall.",
+        type: "rest"
+      },
+      {
+        time: "10:25 AM - 11:00 AM",
+        duration: "35 Min",
+        title: "Award and Certificate Distribution",
+        location: "Sanskruti Hall / Amphitheatre",
+        dress: "Formal / Clean Attire",
+        description: "Official felicitation ceremony, squad awards, and completion certificate distribution.",
+        type: "academic"
+      },
+      {
+        time: "11:00 AM - 12:00 PM",
+        duration: "60 Min",
+        title: "Bath Break, Packing the Bags, and Vacate the Rooms",
+        location: "Hostel Rooms",
         dress: "Travel Attire",
-        description: "Packing, room clearance, handing over room keys, and checkout procedures.",
+        description: "Bath break, packing personal belongings, room inspection, and vacating rooms.",
         type: "registration"
       },
       {
-        time: "12:00 PM - 01:00 PM",
-        duration: "60 Min",
+        time: "12:00 PM - 12:30 PM",
+        duration: "30 Min",
         title: "Lunch",
         location: "Dining Hall",
         dress: "Travel Attire",
@@ -564,59 +747,34 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         type: "meals"
       },
       {
-        time: "01:00 PM - 04:00 PM",
-        duration: "90 Min",
-        title: "Departure to Dome and Visit, Museum etc (Optional)",
-        location: "World Peace Dome & Museum",
-        dress: "Travel Attire",
-        description: "Departure to World Peace Dome and Visit, Museum etc (Optional educational tour).",
-        type: "academic"
-      },
-      {
-        time: "04:00 PM - 04:15 PM",
+        time: "12:30 PM - 12:45 PM",
         duration: "15 Min",
-        title: "Transition",
-        location: "Transport Bay",
+        title: "Mobile Return",
+        location: "Admin Bay / Hostels",
         dress: "Travel Attire",
-        description: "Boarding school transport and final headcount.",
-        type: "rest"
-      },
-      {
-        time: "03:15 PM - 04:15 PM",
-        duration: "60 Min",
-        title: "Departure to Pune",
-        location: "Transport Bay / En Route",
-        dress: "Travel Attire",
-        description: "Departure from LTC Boribel towards Pune campus.",
-        type: "registration"
-      },
-      {
-        time: "06:15 PM - 06:45 PM",
-        duration: "30 Min",
-        title: "Arrival in Pune",
-        location: "MIT-WPU Campus, Pune",
-        dress: "Travel Attire",
-        description: "Arrival at MIT-WPU Pune campus and dispersal.",
+        description: "Safe return and verification of student mobile phones before departure.",
         type: "registration"
       }
     ]
   }
 
-  // Venue and dress code guidelines matching the 3-Day schedule
+  // Venue and dress code guidelines matching the LAP schedule
   const dressCodeRules = [
-    { activity: "Arrival & Room Allotment", venue: "Hostels / Reception", dress: "Casual Dress", note: "Day 1 Arrival & room check-in" },
-    { activity: "Orientation for LAP", venue: "Orientation Hall / Gazebo", dress: "Casual Dress", note: "Day 1 Program overview" },
-    { activity: "Team Building & Leadership", venue: "Gazebo & Activity Area", dress: "Sports T-Shirt & Track Pants", note: "Five Pillars outdoor activities" },
-    { activity: "Agriculture and Nature", venue: "LTC Farm & Activity Area", dress: "Collar T-Shirt & Track Pants", note: "Fieldwork & farming exercises" },
-    { activity: "Patriotism & Nation Building", venue: "Grounds & Drill Course", dress: "Sports Attire & Shoes", note: "Military drills & obstacle training" },
-    { activity: "Physical Fitness Sports", venue: "Sports Grounds", dress: "Sports Attire & Shoes", note: "Traditional Indian sports & conditioning" },
-    { activity: "Spirituality and Peace (Yoga / Meditation)", venue: "Gazebo / Sanskruti Hall", dress: "Comfortable Yoga Dress", note: "Morning & evening reflection" },
-    { activity: "Story Telling & Book Reading (Mauna)", venue: "Gazebo / Hostel Reading Area", dress: "Casual Dress", note: "Mindfulness and character building" },
-    { activity: "Feedback Form & Valedictory Ceremony", venue: "Sanskruti Hall / Amphitheatre", dress: "Formal / Clean Attire", note: "Day 3 Awards & certificate ceremony" },
-    { activity: "Dome Visit & Departure to Pune", venue: "World Peace Dome & Transport Bay", dress: "Travel Attire", note: "Day 3 Return journey" }
+    { activity: "Arrival at LTC & Room Allotment", venue: "Reception / Hostels", dress: "Casual Dress", note: "Day 1 Arrival, bag checking & accommodation" },
+    { activity: "Orientation for LAP", venue: "Orientation Hall / Gazebo", dress: "Casual Dress", note: "Day 1 Program overview and code of conduct" },
+    { activity: "Patriotism & Nation Building", venue: "Sports Ground & Drill Course", dress: "Sports Attire & Shoes", note: "Morning drills, national song & obstacle course" },
+    { activity: "Spirituality and Peace (Yoga & Meditation)", venue: "Gazebo / Sanskruti Hall", dress: "Yoga Dress", note: "Joint movement, Surya Namaskar, Animal Flow & Pranayam" },
+    { activity: "Team Building & Leadership Activities", venue: "Gazebo & Activity Grounds", dress: "Sports T-Shirt & Track Pants", note: "Human Knot, Bridge, Dolphin & Stacking Relay" },
+    { activity: "Agriculture and Nature Activities", venue: "LTC Farm & Polyhouse", dress: "Sports Attire & Shoes", note: "Farm tour, livestock, polyhouse irrigation & seedling sowing" },
+    { activity: "Physical Fitness Sports Activities", venue: "Sports Grounds", dress: "Sports Attire & Shoes", note: "Traditional Indian sports: Kho-Kho, Dodgeball, Rumal Pani, Langadi & Aatya Pattya" },
+    { activity: "Book Reading & Mauna (Silence)", venue: "Hostel / Reading Area", dress: "Casual Dress", note: "Quiet self-reflection, diary writing & resting" },
+    { activity: "Expression Activity (Drawing Sheet)", venue: "Activity Hall / Gazebo", dress: "Casual Dress", note: "Reflective drawing and creative self-expression" },
+    { activity: "Movie Time & Cultural Celebration", venue: "Amphitheatre", dress: "Casual Dress", note: "Evening community movie and cultural showcase" },
+    { activity: "Award & Certificate Distribution", venue: "Sanskruti Hall / Amphitheatre", dress: "Formal / Clean Attire", note: "Day 4 Valedictory, awards & certificates" },
+    { activity: "Packing, Room Clearance & Mobile Return", venue: "Hostel Rooms & Admin Bay", dress: "Travel Attire", note: "Day 4 Room handover, mobile return & return journey" }
   ]
 
-  // Day theme accents matching the reference image colors
+  // Day theme accents matching the schedule days
   const dayMeta = {
     1: {
       badgeBg: '#ea580c',
@@ -629,7 +787,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
     2: {
       badgeBg: '#047857',
       badgeText: '#ffffff',
-      tag: 'Day 2 — Immersion & Swap Groups',
+      tag: 'Day 2 — Patriotism, Yoga & Team Building',
       accentColor: '#047857',
       bgLight: '#f0fdf4',
       borderColor: '#bbf7d0'
@@ -637,10 +795,18 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
     3: {
       badgeBg: '#4338ca',
       badgeText: '#ffffff',
-      tag: 'Day 3 — Valedictory & Departure',
+      tag: 'Day 3 — Sports, Polyhouse & Cultural Night',
       accentColor: '#4338ca',
       bgLight: '#f5f3ff',
       borderColor: '#ddd6fe'
+    },
+    4: {
+      badgeBg: '#0284c7',
+      badgeText: '#ffffff',
+      tag: 'Day 4 — Awards, Certificates & Departure',
+      accentColor: '#0284c7',
+      bgLight: '#f0f9ff',
+      borderColor: '#bae6fd'
     }
   }
 
@@ -701,7 +867,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
               {t("LAP Schedule")}
             </h2>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}>
-              {t("3-Day residential schedule & activity agenda")}
+              {t("Residential schedule & activity agenda")}
             </p>
           </div>
 
@@ -728,7 +894,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           </button>
         </div>
 
-        {/* Day Segmented Selector (Day 1 to 3) */}
+        {/* Day Segmented Selector (Day 1 to 4) */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -741,9 +907,9 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           flexWrap: 'wrap'
         }}>
           <div style={{ display: 'flex', gap: '6px' }}>
-            {[1, 2, 3].map((val) => {
+            {[1, 2, 3, 4].map((val) => {
               const isSel = parseInt(compactSelectedDay) === val;
-              const meta = dayMeta[val];
+              const meta = dayMeta[val] || dayMeta[1];
               return (
                 <button
                   key={val}
@@ -872,7 +1038,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
             {t("LAP Schedule")}
           </h3>
           <p style={{ fontSize: '13.5px', color: '#64748b', margin: '4px 0 0 0', fontWeight: '500' }}>
-            {t("Official 3-Day residential schedule, timings, venues, and dress codes")}
+            {t("Official residential schedule, timings, venues, and dress codes")}
           </p>
         </div>
         
@@ -930,14 +1096,16 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
 
       {activeSubTab === 'schedule' && (
         <>
-          {/* Day selection tabs (Clean Day 1, 2, 3 Layout) */}
+          {/* Day selection tabs (Day 1, 2, 3, 4 Layout) */}
           <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
             {[
               { day: 1, label: 'Day 1' },
               { day: 2, label: 'Day 2' },
-              { day: 3, label: 'Day 3' }
+              { day: 3, label: 'Day 3' },
+              { day: 4, label: 'Day 4' }
             ].map(({ day, label }) => {
               const isSel = selectedDay === day;
+              const meta = dayMeta[day] || dayMeta[1];
               return (
                 <button
                   key={day}
@@ -947,11 +1115,11 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontWeight: '700',
-                    border: `1px solid ${isSel ? '#ea580c' : '#e2e8f0'}`,
+                    border: `1px solid ${isSel ? meta.accentColor : '#e2e8f0'}`,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease',
-                    background: isSel ? '#ea580c' : '#ffffff',
+                    background: isSel ? meta.accentColor : '#ffffff',
                     color: isSel ? '#ffffff' : '#475569',
                     boxShadow: 'none'
                   }}
@@ -976,7 +1144,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
-                background: '#ea580c',
+                background: currentMeta.accentColor,
                 color: '#ffffff',
                 padding: '3px 10px',
                 borderRadius: '6px',
