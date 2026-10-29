@@ -1198,17 +1198,18 @@ const changePassword = async (req, res) => {
   }
 };
 
-// Helper to check and enforce upload quota for Squad Coordinators (max 5 photos, 2 videos per batch)
-const checkCoordinatorUploadLimit = async (clientOrPool, userId, activeBatchId, isVideo) => {
+// Helper to check and enforce upload quota for Coordinators (minimum 20 photos required for photo submission; max 2 videos per batch)
+const checkCoordinatorUploadLimit = async (clientOrPool, userId, activeBatchId, isVideo, batchPhotosCount) => {
   const userRes = await clientOrPool.query("SELECT id, role, designation FROM users WHERE id = $1", [userId]);
   const user = userRes.rows[0];
-  const isSquadCoordinator = (user?.designation && user.designation.toLowerCase().includes('squad coordinator')) || user?.role === 'squad_coordinator';
+  const isSquadCoordinator = (user?.designation && (user.designation.toLowerCase().includes('coordinator') || user.designation.toLowerCase().includes('squad coordinator'))) || 
+    user?.role === 'squad_coordinator' || user?.role === 'coordinator' || user?.role === 'ltc_coordinator';
 
   if (!isSquadCoordinator) {
-    return { isSquadCoordinator: false };
+    return { isSquadCoordinator: false, isCoordinator: false };
   }
 
-  const PHOTO_LIMIT = 5;
+  const MIN_PHOTO_REQUIREMENT = 20;
   const VIDEO_LIMIT = 2;
 
   let photoCount = 0;
@@ -1232,12 +1233,7 @@ const checkCoordinatorUploadLimit = async (clientOrPool, userId, activeBatchId, 
 
   if (isVideo !== undefined) {
     if (isVideo && videoCount >= VIDEO_LIMIT) {
-      const err = new Error(`Upload limit reached: Squad Coordinators can upload a maximum of ${VIDEO_LIMIT} videos for this batch.`);
-      err.statusCode = 403;
-      throw err;
-    }
-    if (!isVideo && photoCount >= PHOTO_LIMIT) {
-      const err = new Error(`Upload limit reached: Squad Coordinators can upload a maximum of ${PHOTO_LIMIT} photos for this batch.`);
+      const err = new Error(`Upload limit reached: Coordinators can upload a maximum of ${VIDEO_LIMIT} videos for this batch.`);
       err.statusCode = 403;
       throw err;
     }
@@ -1245,11 +1241,12 @@ const checkCoordinatorUploadLimit = async (clientOrPool, userId, activeBatchId, 
 
   return {
     isSquadCoordinator: true,
+    isCoordinator: true,
+    minPhotosRequired: MIN_PHOTO_REQUIREMENT,
+    minPhotoRequirement: MIN_PHOTO_REQUIREMENT,
     photoCount,
     videoCount,
-    photoLimit: PHOTO_LIMIT,
     videoLimit: VIDEO_LIMIT,
-    remainingPhotos: Math.max(0, PHOTO_LIMIT - photoCount),
     remainingVideos: Math.max(0, VIDEO_LIMIT - videoCount)
   };
 };
@@ -1378,8 +1375,10 @@ const getJourneyPresignedUrl = async (req, res) => {
       return res.status(400).json({ message: `File size exceeds the limit. Max size for images is 50MB, and for videos is 500MB.` });
     }
 
-    // Check Squad Coordinator upload quota (5 photos, 2 videos per batch)
-    await checkCoordinatorUploadLimit(pool, req.user.id, activeBatchRow.batch_id, isVideo);
+    // Check Coordinator upload quota (minimum 20 photos required, max 2 videos per batch)
+    const rawBatchPhotos = req.body.batch_photos_count || req.headers['x-batch-photos-count'] || req.body.photo_count;
+    const batchPhotosCount = rawBatchPhotos !== undefined ? parseInt(rawBatchPhotos, 10) : undefined;
+    await checkCoordinatorUploadLimit(pool, req.user.id, activeBatchRow.batch_id, isVideo, batchPhotosCount);
 
     const storageType = process.env.STORAGE_TYPE || 'local';
 
@@ -1517,7 +1516,9 @@ const uploadJourneyMedia = async (req, res) => {
     await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
 
     const isVideoItem = media_type === 'video' || (finalMimeType && finalMimeType.startsWith('video/'));
-    await checkCoordinatorUploadLimit(client, req.user.id, batch_id, isVideoItem);
+    const rawBatchPhotos = req.body.batch_photos_count || req.headers['x-batch-photos-count'] || req.body.photo_count;
+    const batchPhotosCount = rawBatchPhotos !== undefined ? parseInt(rawBatchPhotos, 10) : undefined;
+    await checkCoordinatorUploadLimit(client, req.user.id, batch_id, isVideoItem, batchPhotosCount);
 
     const insertRes = await client.query(
       `INSERT INTO journey_media (
@@ -1543,6 +1544,78 @@ const uploadJourneyMedia = async (req, res) => {
 
     await client.query('COMMIT');
     res.status(201).json({ message: 'Journey media uploaded successfully.', media: insertRes.rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(err.statusCode || 500).json({ message: err.message || 'Server error', error: err.message });
+  } finally {
+    client.release();
+  }
+};
+
+const uploadJourneyMediaBatch = async (req, res) => {
+  const { items, media_type, batch_photos_count } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: 'Items array is required and must not be empty.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    const activeBatchRow = await resolveFacultyBatch(client, req.user.id);
+    if (!activeBatchRow || !activeBatchRow.batch_id || !activeBatchRow.squad) {
+      client.release();
+      return res.status(400).json({ message: 'You must be assigned to a batch and squad to upload media.' });
+    }
+
+    const { batch_id, squad } = activeBatchRow;
+    const quota = await checkCoordinatorUploadLimit(client, req.user.id, batch_id);
+
+    const isCoordinator = quota.isSquadCoordinator;
+    const videoItems = items.filter(i => (i.media_type || media_type) === 'video');
+
+    if (isCoordinator && videoItems.length > 0) {
+      if (quota.videoCount + videoItems.length > quota.videoLimit) {
+        client.release();
+        return res.status(403).json({
+          message: `Upload limit reached: Coordinators can upload a maximum of ${quota.videoLimit} videos for this batch.`
+        });
+      }
+    }
+
+    await client.query('BEGIN');
+    const inserted = [];
+    for (const item of items) {
+      const mType = item.media_type || media_type || 'photo';
+      const storageType = item.storage_type || process.env.STORAGE_TYPE || 'local';
+      const fileUrl = item.media_url || (item.storage_key ? storageService.getFileUrl(item.storage_key, storageType) : '');
+
+      const insertRes = await client.query(
+        `INSERT INTO journey_media (
+           batch_id, squad, uploaded_by, media_type, media_url, caption,
+           original_file_name, storage_type, storage_key, mime_type, file_size
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING *`,
+        [
+          batch_id,
+          squad,
+          req.user.id,
+          mType,
+          fileUrl,
+          item.caption || '',
+          item.original_file_name || 'squad_memory',
+          storageType,
+          item.storage_key || null,
+          item.mime_type || (mType === 'video' ? 'video/mp4' : 'image/jpeg'),
+          parseInt(item.file_size || 0, 10)
+        ]
+      );
+      inserted.push(insertRes.rows[0]);
+    }
+    await client.query('COMMIT');
+    res.status(201).json({
+      message: `${inserted.length} media items uploaded successfully.`,
+      media: inserted
+    });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     res.status(err.statusCode || 500).json({ message: err.message || 'Server error', error: err.message });
@@ -1601,7 +1674,9 @@ const uploadJourneyBinaryMedia = async (req, res) => {
     await client.query('BEGIN');
     // Lock user row to serialize simultaneous uploads and ensure quota accuracy
     await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
-    await checkCoordinatorUploadLimit(client, req.user.id, batch_id, isVideoItem);
+    const rawBatchPhotos = req.body.batch_photos_count || req.headers['x-batch-photos-count'] || req.body.photo_count;
+    const batchPhotosCount = rawBatchPhotos !== undefined ? parseInt(rawBatchPhotos, 10) : undefined;
+    await checkCoordinatorUploadLimit(client, req.user.id, batch_id, isVideoItem, batchPhotosCount);
 
     const storageResult = await storageService.uploadFile(req.file.buffer, originalFileName, mimeType);
 
@@ -1766,6 +1841,7 @@ module.exports = {
   changePassword,
   getJourneyMedia,
   uploadJourneyMedia,
+  uploadJourneyMediaBatch,
   deleteJourneyMedia,
   getJourneyPresignedUrl,
   getJourneyMultipartPartUrl,

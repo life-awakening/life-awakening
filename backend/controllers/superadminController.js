@@ -6641,36 +6641,67 @@ const getBatchGroupPhotosSummary = async (req, res) => {
 const getBatchGroupPhotos = async (req, res) => {
   const { batchId } = req.params;
   if (!batchId || batchId === 'undefined' || batchId === 'null' || isNaN(Number(batchId))) {
-    return res.json({ groupPhotos: [] });
+    return res.json({ groupPhotos: [], photos: [], data: [], count: 0 });
   }
   try {
+    const parsedBatchId = parseInt(batchId, 10);
     const result = await pool.query(
       `SELECT jm.*, u.name as uploader_name, u.role as uploader_role
        FROM journey_media jm
        LEFT JOIN users u ON jm.uploaded_by = u.id
-       WHERE jm.batch_id = $1
+       WHERE (jm.batch_id = $1 OR jm.batch_id::text = $2)
          AND (jm.is_group_photo = TRUE OR jm.squad = 'Batch Group' OR jm.caption ILIKE '%group%')
-       ORDER BY jm.created_at ASC
+       ORDER BY COALESCE(jm.slot_number, 999) ASC, jm.created_at ASC
        LIMIT 2`,
-      [batchId]
+      [parsedBatchId, String(batchId)]
     );
 
-    const photos = result.rows.map((row, idx) => ({
-      id: row.id,
-      slot: (row.slot_number != null ? Number(row.slot_number) : (idx + 1)),
-      imageUrl: storageService.getFileUrl(row.storage_key || row.media_url, row.storage_type),
-      caption: row.caption || `Official Batch Group Photo ${(row.slot_number != null ? Number(row.slot_number) : (idx + 1))}`,
-      createdAt: row.created_at,
-      uploadedBy: row.uploaded_by,
-      uploaderName: row.uploader_name || 'Admin',
-      uploaderRole: row.uploader_role,
-      isGroupPhoto: true
-    }));
+    const photos = result.rows.map((row, idx) => {
+      let imageUrl = row.media_url || '';
+      if (row.storage_key) {
+        imageUrl = storageService.getFileUrl(row.storage_key, row.storage_type);
+      } else if (imageUrl) {
+        imageUrl = storageService.getFileUrl(imageUrl, row.storage_type);
+      }
+      const slotNum = row.slot_number != null ? Number(row.slot_number) : (idx + 1);
+      return {
+        id: row.id,
+        slot: slotNum,
+        slot_number: slotNum,
+        imageUrl: imageUrl,
+        media_url: imageUrl,
+        caption: row.caption || `Official Batch Group Photo ${slotNum}`,
+        createdAt: row.created_at,
+        created_at: row.created_at,
+        uploadedBy: row.uploaded_by,
+        uploaded_by: row.uploaded_by,
+        uploaderName: row.uploader_name || 'Admin',
+        uploader_name: row.uploader_name || 'Admin',
+        uploaderRole: row.uploader_role,
+        uploader_role: row.uploader_role,
+        isGroupPhoto: true,
+        is_group_photo: true,
+        batchId: row.batch_id,
+        batch_id: row.batch_id
+      };
+    });
 
-    res.json({ groupPhotos: photos });
+    res.json({
+      groupPhotos: photos,
+      photos,
+      data: photos,
+      count: photos.length
+    });
   } catch (err) {
     console.error('Error fetching batch group photos:', err);
-    res.status(500).json({ message: 'Error fetching batch group photos', error: err.message });
+    res.status(500).json({
+      message: 'Error fetching batch group photos',
+      error: err.message,
+      groupPhotos: [],
+      photos: [],
+      data: [],
+      count: 0
+    });
   }
 };
 

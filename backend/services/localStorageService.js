@@ -27,6 +27,10 @@ module.exports = {
   },
 
   getFileUrl: (storageKey) => {
+    if (!storageKey) return '';
+    if (storageKey.startsWith('/uploads/') || storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
+      return storageKey;
+    }
     return `/uploads/journey/${storageKey}`;
   }
 };

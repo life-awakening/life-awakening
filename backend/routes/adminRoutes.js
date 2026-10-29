@@ -144,7 +144,16 @@ router.post('/unlock-squads', authMiddleware(['admin']), adminController.unlockS
 router.post('/shuffle-squads', authMiddleware(['admin']), adminController.shuffleSquads);
 router.get('/journey-media', authMiddleware(['admin', 'superadmin', 'gallery']), adminController.getAllJourneyMedia);
 router.delete('/journey-media/:id', authMiddleware(['admin']), adminController.deleteJourneyMedia);
-router.get('/batch-group-photos/:batchId', authMiddleware(['admin', 'superadmin', 'superadmin_readonly', 'dean_ltc', 'gallery']), superadminController.getBatchGroupPhotos);
+router.get('/batch-group-photos/:batchId', (req, res, next) => {
+  const authHeader = req.headers.authorization || (req.query?.token ? `Bearer ${req.query.token}` : null);
+  if (!authHeader) return next();
+  try {
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader;
+    const jwt = require('jsonwebtoken');
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (_) {}
+  next();
+}, superadminController.getBatchGroupPhotos);
 router.post('/batch-group-photos', authMiddleware(['admin', 'superadmin', 'superadmin_readonly']), memoryUpload.single('file'), superadminController.uploadBatchGroupPhoto);
 router.delete('/batch-group-photos/:id', authMiddleware(['admin', 'superadmin', 'superadmin_readonly']), superadminController.deleteBatchGroupPhoto);
 

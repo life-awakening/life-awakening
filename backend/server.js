@@ -87,7 +87,9 @@ const corsOptions = {
     "x-student-id",
     "X-Student-Id",
     "x-selected-student-id",
-    "X-Selected-Student-Id"
+    "X-Selected-Student-Id",
+    "x-batch-photos-count",
+    "X-Batch-Photos-Count"
   ]
 };
 

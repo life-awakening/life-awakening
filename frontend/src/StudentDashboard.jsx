@@ -1339,8 +1339,7 @@ export default function StudentDashboard() {
   const [evalSummaries, setEvalSummaries] = useState([])
   const [customCertificates, setCustomCertificates] = useState([])
 
-  const hasExistingCertificate = (customCertificates && customCertificates.length > 0) || 
-    (typeof window !== 'undefined' && myData?.id && localStorage.getItem(`cert_downloaded_${myData.id}`) === 'true')
+  const hasExistingCertificate = (customCertificates && customCertificates.length > 0)
 
   const canAccessCertificates = hasSubmittedServiceFeedback || hasExistingCertificate
   const isPostFeedbackDay = () => {
@@ -3497,7 +3496,7 @@ export default function StudentDashboard() {
                   <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span style={{ fontSize: '16px', fontWeight: '750', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Download Your Certificate")}</span>
-                      <span style={{ fontSize: '13px', color: '#64748b', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Get your official MIT-WPU Life Transformation Camp Certificate of Participation.")}</span>
+                      <span style={{ fontSize: '13px', color: '#64748b', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Get your official Life Awakening Program Certificate of Participation.")}</span>
                     </div>
                     <button
                       id="download-certificate-btn"
@@ -5178,7 +5177,12 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            <UserCertificatesTab token={token} myData={myData} canAccessCertificates={canAccessCertificates} />
+            <UserCertificatesTab 
+              token={token} 
+              myData={myData} 
+              canAccessCertificates={canAccessCertificates} 
+              onOpenFeedback={() => setActiveTab('service-feedback')} 
+            />
           </div>
         )}
 

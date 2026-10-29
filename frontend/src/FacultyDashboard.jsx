@@ -1144,6 +1144,20 @@ export default function FacultyDashboard({ isLtcMember = false }) {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
   const isPrimary = currentUser.is_primary === true || currentUser.is_primary === 'true'
   const isPerfAdmin = currentUser.is_performance_admin || (Array.isArray(currentUser.performance_roles) && currentUser.performance_roles.length > 0)
+  const isLtcCoordinator = Boolean(
+    isLtcMember ||
+    currentUser?.role === 'coordinator' ||
+    currentUser?.role === 'ltc_coordinator' ||
+    currentUser?.role === 'ltc_member' ||
+    currentUser?.role === 'squad_coordinator' ||
+    (typeof currentUser?.designation === 'string' && currentUser.designation.toLowerCase().includes('coordinator'))
+  )
+
+  useEffect(() => {
+    if (isLtcCoordinator && (activeTab === 'pre-ltc-feedback' || activeTab === 'feedback' || activeTab === 'certificates')) {
+      setActiveTab('dashboard')
+    }
+  }, [isLtcCoordinator, activeTab])
 
   useEffect(() => {
     if (isPerfAdmin) {
@@ -2657,7 +2671,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
             <span style={{ fontSize: '10px', fontWeight: '750', letterSpacing: '0.8px', textTransform: 'uppercase', color: '#94a3b8', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'block', overflow: 'hidden', maxHeight: isCollapsed ? '0px' : '32px', opacity: isCollapsed ? 0 : 1, padding: isCollapsed ? '0 12px' : '12px 12px 6px 12px', transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, padding 0.35s cubic-bezier(0.4,0,0.2,1)' }}>{t("Overview")}</span>
             {renderSidebarItem('dashboard', <GraduationCap />, t("My Overview"))}
             {renderSidebarItem('students', <Users />, t("Students"))}
-            {renderSidebarItem('pre-ltc-feedback', <ClipboardList />, t("Pre-LTC Feedback"))}
+            {!isLtcCoordinator && renderSidebarItem('pre-ltc-feedback', <ClipboardList />, t("Pre-LTC Feedback"))}
             {renderSidebarItem('undertaking', <FileText />, t("Undertaking Form"), !facultyInfo?.undertaking_submitted ? { text: t("Pending"), bg: '#ef4444', color: '#ffffff' } : null)}
             {renderSidebarItem('attendance', <ClipboardList />, t("My Attendance"))}
             {assignedPerformanceRoles.length > 0 && renderSidebarItem('performance-admin', <Award />, t("Performance Admin"), { text: `${assignedPerformanceRoles.length}`, bg: '#ea580c', color: '#ffffff' })}
@@ -2666,11 +2680,11 @@ export default function FacultyDashboard({ isLtcMember = false }) {
             {renderSidebarItem('timetable', <Clock />, t("LAP Timetable"))}
             {renderSidebarItem('profile', <User />, t("My Profile"))}
             {renderSidebarItem('journey', <Compass />, t("LAP Journey Media"))}
-            {renderSidebarItem('certificates', <Award />, t("My Certificates"))}
+            {!isLtcCoordinator && renderSidebarItem('certificates', <Award />, t("My Certificates"))}
 
             <span style={{ fontSize: '10px', fontWeight: '750', letterSpacing: '0.8px', textTransform: 'uppercase', color: '#94a3b8', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'block', overflow: 'hidden', maxHeight: isCollapsed ? '0px' : '32px', opacity: isCollapsed ? 0 : 1, padding: isCollapsed ? '0 12px' : '16px 12px 6px 12px', transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, padding 0.35s cubic-bezier(0.4,0,0.2,1)' }}>{t("Feedback & Support")}</span>
             {renderSidebarItem('guidelines', <FileText />, t("Docs & Guidelines"), unreadCount > 0 ? { text: String(unreadCount) } : null)}
-            {renderSidebarItem('feedback', <MessageSquare />, t("Post-LTC Feedback"))}
+            {!isLtcCoordinator && renderSidebarItem('feedback', <MessageSquare />, t("Post-LTC Feedback"))}
             {renderSidebarItem('faq', <HelpCircle />, t("FAQs"))}
             {renderSidebarItem('tickets', <MessageSquare />, t("Raise Ticket"))}
           </nav>
@@ -2763,7 +2777,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
               <span style={{ fontSize: '10px', fontWeight: '750', letterSpacing: '0.8px', textTransform: 'uppercase', color: '#94a3b8', padding: '12px 12px 6px 12px', display: 'block', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Overview")}</span>
               {renderSidebarItem('dashboard', <GraduationCap />, t("My Overview"))}
               {renderSidebarItem('students', <Users />, t("Students"))}
-              {renderSidebarItem('pre-ltc-feedback', <ClipboardList />, t("Pre-LTC Feedback"))}
+              {!isLtcCoordinator && renderSidebarItem('pre-ltc-feedback', <ClipboardList />, t("Pre-LTC Feedback"))}
               {renderSidebarItem('undertaking', <FileText />, t("Undertaking Form"), !facultyInfo?.undertaking_submitted ? { text: t("Pending"), bg: '#ef4444', color: '#ffffff' } : null)}
               {renderSidebarItem('attendance', <ClipboardList />, t("My Attendance"))}
               {assignedPerformanceRoles.length > 0 && renderSidebarItem('performance-admin', <Award />, t("Performance Admin"), { text: `${assignedPerformanceRoles.length}`, bg: '#ea580c', color: '#ffffff' })}
@@ -2772,11 +2786,11 @@ export default function FacultyDashboard({ isLtcMember = false }) {
               {renderSidebarItem('timetable', <Clock />, t("LAP Timetable"))}
               {renderSidebarItem('profile', <User />, t("My Profile"))}
               {renderSidebarItem('journey', <Compass />, t("LAP Journey Media"))}
-              {renderSidebarItem('certificates', <Award />, t("My Certificates"))}
+              {!isLtcCoordinator && renderSidebarItem('certificates', <Award />, t("My Certificates"))}
 
               <span style={{ fontSize: '10px', fontWeight: '750', letterSpacing: '0.8px', textTransform: 'uppercase', color: '#94a3b8', padding: '16px 12px 6px 12px', display: 'block', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Feedback & Support")}</span>
               {renderSidebarItem('guidelines', <FileText />, t("Docs & Guidelines"), unreadCount > 0 ? { text: String(unreadCount) } : null)}
-              {renderSidebarItem('feedback', <MessageSquare />, t("Post-LTC Feedback"))}
+              {!isLtcCoordinator && renderSidebarItem('feedback', <MessageSquare />, t("Post-LTC Feedback"))}
               {renderSidebarItem('faq', <HelpCircle />, t("FAQs"))}
               {renderSidebarItem('tickets', <MessageSquare />, t("Raise Ticket"))}
             </nav>
@@ -2941,30 +2955,34 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                     <option value="pending">Pending</option>
                   </select>
                 </div>
-                <div style={{ minWidth: '180px' }}>
-                  <select
-                    className="input-field"
-                    style={{ margin: 0, height: '100%', cursor: 'pointer', outline: 'none' }}
-                    value={preFeedbackFilter}
-                    onChange={(e) => setPreFeedbackFilter(e.target.value)}
-                  >
-                    <option value="all">All Pre-Feedback</option>
-                    <option value="submitted">Pre-LTC Submitted</option>
-                    <option value="pending">Pre-LTC Pending</option>
-                  </select>
-                </div>
-                <div style={{ minWidth: '180px' }}>
-                  <select
-                    className="input-field"
-                    style={{ margin: 0, height: '100%', cursor: 'pointer', outline: 'none' }}
-                    value={postFeedbackFilter}
-                    onChange={(e) => setPostFeedbackFilter(e.target.value)}
-                  >
-                    <option value="all">All Post-Feedback</option>
-                    <option value="submitted">Post-LTC Submitted</option>
-                    <option value="pending">Post-LTC Pending</option>
-                  </select>
-                </div>
+                {!isLtcCoordinator && (
+                  <>
+                    <div style={{ minWidth: '180px' }}>
+                      <select
+                        className="input-field"
+                        style={{ margin: 0, height: '100%', cursor: 'pointer', outline: 'none' }}
+                        value={preFeedbackFilter}
+                        onChange={(e) => setPreFeedbackFilter(e.target.value)}
+                      >
+                        <option value="all">All Pre-Feedback</option>
+                        <option value="submitted">Pre-LTC Submitted</option>
+                        <option value="pending">Pre-LTC Pending</option>
+                      </select>
+                    </div>
+                    <div style={{ minWidth: '180px' }}>
+                      <select
+                        className="input-field"
+                        style={{ margin: 0, height: '100%', cursor: 'pointer', outline: 'none' }}
+                        value={postFeedbackFilter}
+                        onChange={(e) => setPostFeedbackFilter(e.target.value)}
+                      >
+                        <option value="all">All Post-Feedback</option>
+                        <option value="submitted">Post-LTC Submitted</option>
+                        <option value="pending">Post-LTC Pending</option>
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Gender and Total stats summary */}
@@ -3033,7 +3051,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                       {!isLtcMember && <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("PRN")}</th>}
                       <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Name")}</th>
                       {!isLtcMember && <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Email")}</th>}
-                      <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Feedback Status")}</th>
+                      {!isLtcCoordinator && <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Feedback Status")}</th>}
                       <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Room")}</th>
                       <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Designation")}</th>
                       <th style={{ padding: '14px 20px', fontSize: '11px', fontWeight: '750', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>{t("Squad Role")}</th>
@@ -3105,34 +3123,36 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                           )}
 
                           {/* Feedback Status */}
-                          <td style={{ padding: '12px 20px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', minWidth: '35px' }}>Pre:</span>
-                                {s.pre_ltc_submitted ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontSize: '11.5px', fontWeight: '700' }}>
-                                    <CheckCircle size={13} strokeWidth={2.5} /> Submitted
-                                  </span>
-                                ) : (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ea580c', fontSize: '11.5px', fontWeight: '700' }}>
-                                    <Clock size={13} strokeWidth={2.5} /> Pending
-                                  </span>
-                                )}
+                          {!isLtcCoordinator && (
+                            <td style={{ padding: '12px 20px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', minWidth: '35px' }}>Pre:</span>
+                                  {s.pre_ltc_submitted ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontSize: '11.5px', fontWeight: '700' }}>
+                                      <CheckCircle size={13} strokeWidth={2.5} /> Submitted
+                                    </span>
+                                  ) : (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ea580c', fontSize: '11.5px', fontWeight: '700' }}>
+                                      <Clock size={13} strokeWidth={2.5} /> Pending
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', minWidth: '35px' }}>Post:</span>
+                                  {s.post_ltc_submitted ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontSize: '11.5px', fontWeight: '700' }}>
+                                      <CheckCircle size={13} strokeWidth={2.5} /> Submitted
+                                    </span>
+                                  ) : (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ea580c', fontSize: '11.5px', fontWeight: '700' }}>
+                                      <Clock size={13} strokeWidth={2.5} /> Pending
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', minWidth: '35px' }}>Post:</span>
-                                {s.post_ltc_submitted ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontSize: '11.5px', fontWeight: '700' }}>
-                                    <CheckCircle size={13} strokeWidth={2.5} /> Submitted
-                                  </span>
-                                ) : (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ea580c', fontSize: '11.5px', fontWeight: '700' }}>
-                                    <Clock size={13} strokeWidth={2.5} /> Pending
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
+                            </td>
+                          )}
 
                           {/* Room */}
                           <td style={{ padding: '12px 20px' }}>
@@ -3235,7 +3255,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                                 </button>
                               )}
 
-                              {s.pre_ltc_submitted && (
+                              {!isLtcCoordinator && s.pre_ltc_submitted && (
                                 <button
                                   className="btn btn-outline"
                                   style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#15803d', borderColor: '#15803d' }}
@@ -3245,7 +3265,7 @@ export default function FacultyDashboard({ isLtcMember = false }) {
                                 </button>
                               )}
 
-                              {s.post_ltc_submitted && (
+                              {!isLtcCoordinator && s.post_ltc_submitted && (
                                 <button
                                   className="btn btn-outline"
                                   style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#b45309', borderColor: '#b45309' }}
@@ -3745,63 +3765,65 @@ export default function FacultyDashboard({ isLtcMember = false }) {
               </div>
 
               {/* Feedback Form Submitted */}
-              <div 
-                style={{ 
-                  background: '#ffffff', 
-                  borderRadius: '16px', 
-                  border: '1px solid #e2e8f0', 
-                  padding: '16px', 
-                  position: 'relative', 
-                  overflow: 'hidden', 
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
-                  minHeight: '180px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2 }}>
-                  <span style={{ fontSize: '12px', fontWeight: '750', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                    <span className="material-symbols-outlined text-[18px]">feedback</span>
-                    {t("Feedbacks Status")}
-                  </span>
-                  <button onClick={() => setActiveTab('feedback')} style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '600', color: '#1d4ed8', cursor: 'pointer', outline: 'none' }}>{t("View Feedback")} →</button>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2, flex: 1, padding: '12px 0' }}>
-                  <div className="flex flex-col items-center">
-                    <div className="relative w-20 h-20 flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <path className="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f1f5f9" strokeWidth="4"></path>
-                        <path className="text-tertiary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#0ea5e9" strokeDasharray={`${feedbackPct}, 100`} strokeWidth="4"></path>
-                      </svg>
-                      <div className="absolute flex flex-col items-center justify-center text-on-surface">
-                        <span className="text-lg font-bold" style={{ color: '#0f172a' }}>{feedbackPct}%</span>
+              {!isLtcCoordinator && (
+                <div 
+                  style={{ 
+                    background: '#ffffff', 
+                    borderRadius: '16px', 
+                    border: '1px solid #e2e8f0', 
+                    padding: '16px', 
+                    position: 'relative', 
+                    overflow: 'hidden', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
+                    minHeight: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2 }}>
+                    <span style={{ fontSize: '12px', fontWeight: '750', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                      <span className="material-symbols-outlined text-[18px]">feedback</span>
+                      {t("Feedbacks Status")}
+                    </span>
+                    <button onClick={() => setActiveTab('feedback')} style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '600', color: '#1d4ed8', cursor: 'pointer', outline: 'none' }}>{t("View Feedback")} →</button>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2, flex: 1, padding: '12px 0' }}>
+                    <div className="flex flex-col items-center">
+                      <div className="relative w-20 h-20 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                          <path className="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f1f5f9" strokeWidth="4"></path>
+                          <path className="text-tertiary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#0ea5e9" strokeDasharray={`${feedbackPct}, 100`} strokeWidth="4"></path>
+                        </svg>
+                        <div className="absolute flex flex-col items-center justify-center text-on-surface">
+                          <span className="text-lg font-bold" style={{ color: '#0f172a' }}>{feedbackPct}%</span>
+                        </div>
                       </div>
+                      <span className="text-xs text-on-surface-variant font-medium mt-3" style={{ color: '#64748b' }}>{t("Submitted")} ({feedbackSubmitted}/{totalStudents})</span>
                     </div>
-                    <span className="text-xs text-on-surface-variant font-medium mt-3" style={{ color: '#64748b' }}>{t("Submitted")} ({feedbackSubmitted}/{totalStudents})</span>
+                  </div>
+                  {/* Dot Grid Watermark & Glow */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    bottom: 0, 
+                    right: 0, 
+                    width: '120px', 
+                    height: '100px', 
+                    background: 'radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.07), transparent 70%)',
+                    pointerEvents: 'none',
+                    zIndex: 1
+                  }}>
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      backgroundImage: 'radial-gradient(rgba(37, 99, 235, 0.16) 1.5px, transparent 1.5px)',
+                      backgroundSize: '8px 8px',
+                      WebkitMaskImage: 'radial-gradient(circle at bottom right, black 20%, transparent 80%)',
+                      maskImage: 'radial-gradient(circle at bottom right, black 20%, transparent 80%)'
+                    }} />
                   </div>
                 </div>
-                {/* Dot Grid Watermark & Glow */}
-                <div style={{ 
-                  position: 'absolute', 
-                  bottom: 0, 
-                  right: 0, 
-                  width: '120px', 
-                  height: '100px', 
-                  background: 'radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.07), transparent 70%)',
-                  pointerEvents: 'none',
-                  zIndex: 1
-                }}>
-                  <div style={{
-                    width: '100%',
-                    height: '100%',
-                    backgroundImage: 'radial-gradient(rgba(37, 99, 235, 0.16) 1.5px, transparent 1.5px)',
-                    backgroundSize: '8px 8px',
-                    WebkitMaskImage: 'radial-gradient(circle at bottom right, black 20%, transparent 80%)',
-                    maskImage: 'radial-gradient(circle at bottom right, black 20%, transparent 80%)'
-                  }} />
-                </div>
-              </div>
+              )}
 
             </div>
 
@@ -5679,18 +5701,18 @@ export default function FacultyDashboard({ isLtcMember = false }) {
           </div>
         )}
 
-        {activeTab === 'feedback' && <FacultyPostLtcFeedbackTab token={token} />}
+        {!isLtcCoordinator && activeTab === 'feedback' && <FacultyPostLtcFeedbackTab token={token} />}
 
         {activeTab === 'faq' && <FacultyFaqTab isLtcMember={isLtcMember} />}
         {activeTab === 'support' && <SupportTab />}
 
         {activeTab === 'journey' && <FacultyJourneyTab token={token} facultyInfo={facultyInfo} />}
 
-        {activeTab === 'pre-ltc-feedback' && <FacultyPreLtcFeedbackTab token={token} />}
+        {!isLtcCoordinator && activeTab === 'pre-ltc-feedback' && <FacultyPreLtcFeedbackTab token={token} />}
 
         {activeTab === 'tickets' && <FacultyTicketsTab token={token} API={API_BASE_URL} />}
 
-        {activeTab === 'certificates' && <UserCertificatesTab token={token} />}
+        {!isLtcCoordinator && activeTab === 'certificates' && <UserCertificatesTab token={token} />}
         
         {activeTab === 'performance-admin' && (
           <PerformanceAdminMarkingTab

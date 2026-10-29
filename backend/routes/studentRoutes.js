@@ -38,6 +38,7 @@ router.post('/resend-password-otp', authMiddleware(['student', 'parent']), passw
 router.post('/verify-password-otp', authMiddleware(['student', 'parent']), passwordOtpController.verifyPasswordOtp);
 router.put('/change-password', authMiddleware(['student', 'parent']), (req, res) => res.status(403).json({ message: 'Direct password change is disabled. Please request an email OTP to verify and update your password.' }));
 router.get('/certificate-data', authMiddleware(['student', 'parent']), authorizeStudentContext, requireLtcUndertaking, studentController.getCertificateData);
+router.get('/certificate/download', authMiddleware(['student', 'parent']), authorizeStudentContext, requireLtcUndertaking, studentController.downloadCertificatePdf);
 router.get('/ltc-summary/:studentId', authMiddleware(['student', 'parent', 'faculty', 'ltc_member', 'admin', 'superadmin']), authorizeStudentContext, ltcSummaryController.getLtcSummary);
 router.get('/undertaking/pdf/:studentId', authMiddleware(['student', 'parent', 'faculty', 'ltc_member', 'admin', 'superadmin']), authorizeStudentContext, ltcSummaryController.getUndertakingPdf);
 router.get('/feedback/pdf/:studentId/:category', authMiddleware(['student', 'parent', 'faculty', 'ltc_member', 'admin', 'superadmin']), authorizeStudentContext, ltcSummaryController.getFeedbackPdf);

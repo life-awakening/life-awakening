@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const superadminController = require('../controllers/superadminController');
 const adminController = require('../controllers/adminController');
 const databaseResetController = require('../controllers/databaseResetController');
@@ -141,9 +142,22 @@ router.post('/ai-form-analysis', authMiddleware(['superadmin', 'superadmin_reado
 router.post('/ai-form-analysis/chat', authMiddleware(['superadmin', 'superadmin_readonly', 'admin', 'support', 'jeeten']), aiAnalysisController.chatWithFeedbackData);
 router.post('/chatbot/chat', authMiddleware(['superadmin', 'superadmin_readonly', 'admin']), ltcChatbotController.chatWithLtcDatabase);
 
-// Batch Group Photos routes (Superadmin, Read-only Superadmin, Admin, Dean LTC, Faculty, LTC Member & Student)
-router.get('/batch-group-photos/summary', authMiddleware(['superadmin', 'superadmin_readonly', 'admin', 'dean_ltc', 'faculty', 'ltc_member', 'gallery']), superadminController.getBatchGroupPhotosSummary);
-router.get('/batch-group-photos/:batchId', authMiddleware(['superadmin', 'superadmin_readonly', 'admin', 'dean_ltc', 'faculty', 'ltc_member', 'student', 'gallery']), superadminController.getBatchGroupPhotos);
+// Batch Group Photos routes (Superadmin, Read-only Superadmin, Admin, Dean LTC, Faculty, LTC Member, Coordinator & Student)
+router.get('/batch-group-photos/summary', authMiddleware(['superadmin', 'superadmin_readonly', 'admin', 'dean_ltc', 'faculty', 'ltc_member', 'coordinator', 'ltc_coordinator', 'squad_coordinator', 'gallery']), superadminController.getBatchGroupPhotosSummary);
+router.get('/batch-group-photos/:batchId', (req, res, next) => {
+  const authHeader = req.headers.authorization || (req.query?.token ? `Bearer ${req.query.token}` : null);
+  if (!authHeader) {
+    return next();
+  }
+  try {
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+  } catch (_) {
+    // If token is invalid or expired, continue to allow reading group photos
+  }
+  next();
+}, superadminController.getBatchGroupPhotos);
 router.post('/batch-group-photos/presigned-url', authMiddleware(['superadmin', 'superadmin_readonly', 'admin']), superadminController.getBatchGroupPhotoPresignedUrl);
 router.post('/batch-group-photos', authMiddleware(['superadmin', 'superadmin_readonly', 'admin']), upload.single('file'), superadminController.uploadBatchGroupPhoto);
 router.delete('/batch-group-photos/:id', authMiddleware(['superadmin', 'superadmin_readonly', 'admin']), superadminController.deleteBatchGroupPhoto);

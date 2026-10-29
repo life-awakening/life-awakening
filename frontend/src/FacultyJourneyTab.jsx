@@ -141,6 +141,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
 
   // Upload Modal & Enterprise Queue State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [uploadTab, setUploadTab] = useState('photos') // 'photos' | 'videos'
   const [uploadQueue, setUploadQueue] = useState([])
   const [isUploadingQueue, setIsUploadingQueue] = useState(false)
   const [uploadQuota, setUploadQuota] = useState(null)
@@ -1269,60 +1270,60 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
     const rawFiles = Array.from(e.target.files || [])
     if (rawFiles.length === 0) return
 
-    const isCoordinator = !!uploadQuota?.isSquadCoordinator
-    const queuePhotos = uploadQueue.filter(
-      (i) => i.type === 'photo' && i.status !== 'completed' && i.status !== 'failed' && i.status !== 'cancelled'
-    ).length
-    const queueVideos = uploadQueue.filter(
-      (i) => i.type === 'video' && i.status !== 'completed' && i.status !== 'failed' && i.status !== 'cancelled'
-    ).length
-
-    let availablePhotoSlots = isCoordinator ? Math.max(0, (uploadQuota.remainingPhotos ?? 5) - queuePhotos) : Infinity
-    let availableVideoSlots = isCoordinator ? Math.max(0, (uploadQuota.remainingVideos ?? 2) - queueVideos) : Infinity
-
-    if (isCoordinator && availablePhotoSlots <= 0 && availableVideoSlots <= 0) {
-      showToast(t('Upload limit reached: Squad Coordinators can upload a maximum of 5 photos and 2 videos per batch.'), 'error')
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
+    const isCoordinator = !!uploadQuota?.isSquadCoordinator || !!uploadQuota?.isCoordinator
+    const isPhotosMode = uploadTab === 'photos'
+    const isVideosMode = uploadTab === 'videos'
 
     let invalidCount = 0
+    let lowQualityCount = 0
     let oversizedCount = 0
-    let quotaSkippedPhotos = 0
     let quotaSkippedVideos = 0
     const preparedItems = []
+
+    const currentVideosInQueue = uploadQueue.filter(
+      (i) => i.type === 'video' && i.status !== 'completed' && i.status !== 'failed' && i.status !== 'cancelled'
+    ).length
+    let availableVideoSlots = isCoordinator ? Math.max(0, (uploadQuota?.remainingVideos ?? 2) - currentVideosInQueue) : Infinity
 
     for (const rawFile of rawFiles) {
       const isImage = rawFile.type.startsWith('image/')
       const isVideo = rawFile.type.startsWith('video/')
 
-      if (!isImage && !isVideo) {
-        invalidCount++
-        continue
-      }
-
-      // Check coordinator quota limits
-      if (isCoordinator) {
-        if (isImage && availablePhotoSlots <= 0) {
-          quotaSkippedPhotos++
+      if (isPhotosMode) {
+        if (!isImage) {
+          invalidCount++
           continue
         }
-        if (isVideo && availableVideoSlots <= 0) {
+        // High quality check: ensure photo is at least 20KB to reject blank/broken icons
+        if (rawFile.size < 20 * 1024) {
+          lowQualityCount++
+          continue
+        }
+        if (rawFile.size > 50 * 1024 * 1024) {
+          oversizedCount++
+          continue
+        }
+      } else if (isVideosMode) {
+        if (!isVideo) {
+          invalidCount++
+          continue
+        }
+        if (isCoordinator && availableVideoSlots <= 0) {
           quotaSkippedVideos++
           continue
         }
-      }
-
-      const maxSize = isImage ? 50 * 1024 * 1024 : 500 * 1024 * 1024
-      if (rawFile.size > maxSize) {
-        oversizedCount++
-        continue
-      }
-
-      // Decrement available slots as item is accepted
-      if (isCoordinator) {
-        if (isImage) availablePhotoSlots--
-        if (isVideo) availableVideoSlots--
+        if (rawFile.size > 500 * 1024 * 1024) {
+          oversizedCount++
+          continue
+        }
+        if (isCoordinator) {
+          availableVideoSlots--
+        }
+      } else {
+        if (!isImage && !isVideo) {
+          invalidCount++
+          continue
+        }
       }
 
       // Pre-compress image client-side if > 1.5MB
@@ -1355,17 +1356,27 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       })
     }
 
-    if (quotaSkippedPhotos > 0 || quotaSkippedVideos > 0) {
+    if (quotaSkippedVideos > 0) {
       showToast(
-        t('Squad Coordinator limit: Only 5 photos and 2 videos allowed per batch. {{photos}} photo(s) and {{videos}} video(s) were omitted.')
-          .replace('{{photos}}', quotaSkippedPhotos)
-          .replace('{{videos}}', quotaSkippedVideos),
+        t('Video upload limit reached: Coordinators can upload a maximum of 2 videos per batch.'),
         'error'
       )
     }
 
     if (invalidCount > 0) {
-      showToast(t('Some files were ignored (only JPEG/PNG/WEBP images and MP4/MOV videos allowed).'), 'error')
+      showToast(
+        isPhotosMode
+          ? t('Some files were skipped: Only image files (JPEG, PNG, WEBP) are accepted in Photos mode.')
+          : t('Some files were skipped: Only video files (MP4, MOV) are accepted in Videos mode.'),
+        'error'
+      )
+    }
+
+    if (lowQualityCount > 0) {
+      showToast(
+        t('{{count}} image(s) skipped: Minimum 20KB required to ensure high-quality photo submission.').replace('{{count}}', lowQualityCount),
+        'error'
+      )
     }
 
     if (oversizedCount > 0) {
@@ -1441,7 +1452,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
     })
   }
 
-  const performBinaryFallbackUpload = async (item) => {
+  const performBinaryFallbackUpload = async (item, totalBatchPhotosCount = 0) => {
     const file = item.file
     const apiUrl = API_BASE_URL;
 
@@ -1449,6 +1460,9 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       const formData = new FormData()
       formData.append('file', file)
       formData.append('media_type', item.type)
+      if (item.type === 'photo' && totalBatchPhotosCount > 0) {
+        formData.append('batch_photos_count', String(totalBatchPhotosCount))
+      }
 
       const xhr = new XMLHttpRequest()
       activeXhrsRef.current[item.id] = xhr
@@ -1499,7 +1513,12 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
           try { responseData = JSON.parse(xhr.responseText) } catch (e) {}
           resolve(responseData.data || responseData.media || null)
         } else {
-          reject(new Error(`Server binary upload failed with status ${xhr.status}`))
+          let errMsg = `Server binary upload failed with status ${xhr.status}`
+          try {
+            const parsed = JSON.parse(xhr.responseText)
+            if (parsed.message) errMsg = parsed.message
+          } catch (e) {}
+          reject(new Error(errMsg))
         }
       }
 
@@ -1517,7 +1536,7 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
     })
   }
 
-  const uploadSingleFile = async (item) => {
+  const uploadSingleFile = async (item, totalBatchPhotosCount = 0) => {
     const file = item.file
     const apiUrl = API_BASE_URL;
 
@@ -1531,7 +1550,8 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
         fileName: item.name,
         mimeType: item.mimeType,
         fileSize: item.size,
-        media_type: item.type
+        media_type: item.type,
+        batch_photos_count: totalBatchPhotosCount || 0
       })
     })
 
@@ -1624,7 +1644,8 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
             storage_key: initData.storageKey,
             mime_type: item.mimeType,
             file_size: item.size,
-            original_file_name: item.name
+            original_file_name: item.name,
+            batch_photos_count: totalBatchPhotosCount || 0
           })
         })
 
@@ -1638,19 +1659,31 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
       } catch (err) {
         if (err.message === 'Upload cancelled by user.') throw err
         console.warn('Direct S3 presigned upload failed, falling back to server binary upload:', err.message)
-        return await performBinaryFallbackUpload(item)
+        return await performBinaryFallbackUpload(item, totalBatchPhotosCount)
       }
     } else {
-      return await performBinaryFallbackUpload(item)
+      return await performBinaryFallbackUpload(item, totalBatchPhotosCount)
     }
   }
 
   // PARALLEL MULTI-FILE WORKER QUEUE (Concurrency Limit = 3)
   const handleUploadQueue = async (e) => {
     if (e) e.preventDefault()
-    const pendingItems = uploadQueue.filter((i) => i.status === 'pending' || i.status === 'failed' || i.status === 'cancelled')
+    const isCoordinator = !!uploadQuota?.isSquadCoordinator || !!uploadQuota?.isCoordinator
+    const isPhotosMode = uploadTab === 'photos'
+
+    const pendingItems = uploadQueue.filter(
+      (i) => (uploadTab === 'photos' ? i.type === 'photo' : i.type === 'video') &&
+             (i.status === 'pending' || i.status === 'failed' || i.status === 'cancelled')
+    )
+
     if (pendingItems.length === 0) {
-      showToast(t('Please select files to upload.'), 'error')
+      showToast(
+        isPhotosMode
+          ? t('Please select photos to upload.')
+          : t('Please select a video to upload.'),
+        'error'
+      )
       return
     }
 
@@ -2202,36 +2235,6 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
               </span>
             )}
           </button>
-
-          {/* Squad Coordinator Quota Badge */}
-          {uploadQuota?.isSquadCoordinator && (
-            <div
-              title={t("Squad Coordinator upload quota for current batch")}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                height: '38px',
-                padding: '0 12px',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#E2E8F0',
-                userSelect: 'none'
-              }}
-            >
-              <span style={{ color: '#94A3B8' }}>{t("Batch Quota")}:</span>
-              <span style={{ color: uploadQuota.remainingPhotos === 0 ? '#F87171' : '#60A5FA', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                <ImageIcon size={13} /> {uploadQuota.photoCount}/5
-              </span>
-              <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-              <span style={{ color: uploadQuota.remainingVideos === 0 ? '#F87171' : '#A78BFA', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                <Video size={13} /> {uploadQuota.videoCount}/2
-              </span>
-            </div>
-          )}
 
           {/* [+ Upload Photos] Button (Hidden for Students, Admins, SuperAdmins, and Gallery) */}
           {!isStudent && !isAdmin && !isSuperAdmin && !isReadOnly && !isGalleryUser && (
@@ -3661,17 +3664,17 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
           <div
             style={{
               width: '100%',
-              maxWidth: '560px',
-              maxHeight: '90vh',
-              maxHeight: '90dvh',
-              background: '#242426',
+              maxWidth: '480px',
+              maxHeight: 'min(92vh, 680px)',
+              maxHeight: 'min(92dvh, 680px)',
+              background: '#18181B',
               border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '24px',
-              padding: '24px',
+              borderRadius: '20px',
+              padding: '18px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px',
-              boxShadow: '0 30px 60px -12px rgba(0,0,0,0.85)',
+              gap: '12px',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.85)',
               boxSizing: 'border-box',
               margin: 'auto',
               overflowY: 'auto'
@@ -3680,126 +3683,244 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
           >
             {/* Modal Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#2563EB', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.35)' }}>
-                  <Upload size={18} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#2563EB', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
+                  <Upload size={17} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#FFFFFF', letterSpacing: '-0.3px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
                     {t("Upload Photos & Videos")}
                   </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
-                    {t("Add high quality photos and videos to your batch and squad memories")}
-                  </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => setIsUploadModalOpen(false)}
+                onClick={() => { if (!isUploadingQueue) setIsUploadModalOpen(false) }}
                 disabled={isUploadingQueue}
                 style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.1)', color: '#FFFFFF',
+                  width: '30px', height: '30px', borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.08)', color: '#CBD5E1',
                   border: 'none', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', cursor: isUploadingQueue ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.15s ease'
+                  transition: 'all 0.15s ease'
                 }}
-                className="hover:bg-white/20"
+                className="hover:bg-white/20 hover:text-white"
                 aria-label={t("Close")}
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
 
-            {/* Squad Coordinator Quota Summary Banner */}
-            {uploadQuota?.isSquadCoordinator && (
-              <div
+            {/* Clean Segmented Tab Switcher: Photos (Min 20) vs Videos (Max 2) */}
+            <div style={{ display: 'flex', background: '#121214', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', gap: '4px', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setUploadTab('photos')}
+                disabled={isUploadingQueue}
                 style={{
-                  background: (uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0)
-                    ? 'rgba(239, 68, 68, 0.12)'
-                    : 'rgba(37, 99, 235, 0.12)',
-                  border: `1px solid ${(uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0) ? 'rgba(239, 68, 68, 0.3)' : 'rgba(37, 99, 235, 0.3)'}`,
-                  borderRadius: '14px',
-                  padding: '12px 14px',
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: uploadTab === 'photos' ? '#2563EB' : 'transparent',
+                  color: uploadTab === 'photos' ? '#FFFFFF' : '#94A3B8',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: isUploadingQueue ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ImageIcon size={14} />
+                <span>{t("Photos")}</span>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '8px',
+                  background: uploadTab === 'photos' ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+                  color: uploadTab === 'photos' ? '#FFFFFF' : '#CBD5E1'
+                }}>
+                  {t("Target 20")}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUploadTab('videos')}
+                disabled={isUploadingQueue}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: uploadTab === 'videos' ? '#7C3AED' : 'transparent',
+                  color: uploadTab === 'videos' ? '#FFFFFF' : '#94A3B8',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: isUploadingQueue ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Video size={14} />
+                <span>{t("Videos")}</span>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '8px',
+                  background: uploadTab === 'videos' ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+                  color: uploadTab === 'videos' ? '#FFFFFF' : '#CBD5E1'
+                }}>
+                  {t("Max 2")}
+                </span>
+              </button>
+            </div>
+
+            {/* PHOTOS MODE: Minimal Status Banner */}
+            {uploadTab === 'photos' && (() => {
+              const photosInQueue = uploadQueue.filter(i => i.type === 'photo').length;
+              const existingPhotos = uploadQuota?.photoCount || 0;
+              const totalPhotos = existingPhotos + photosInQueue;
+              const isTargetMet = totalPhotos >= 20;
+              const progressPercent = Math.min(100, Math.round((totalPhotos / 20) * 100));
+
+              return (
+                <div style={{
+                  background: isTargetMet ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.04)',
+                  border: `1px solid ${isTargetMet ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                  borderRadius: '12px',
+                  padding: '9px 12px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px',
                   flexShrink: 0
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF' }}>
-                    {t("Squad Coordinator Batch Limit")} {uploadQuota.batchName ? `· ${uploadQuota.batchName}` : ''}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: '700',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ fontWeight: '700', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <ImageIcon size={13} style={{ color: isTargetMet ? '#4ADE80' : '#60A5FA' }} />
+                      {photosInQueue > 0 ? `${photosInQueue} ${t("photo(s) selected")}` : `${existingPhotos} ${t("photos in batch")}`}
+                    </span>
+                    <span style={{
+                      fontSize: '10.5px',
+                      fontWeight: '800',
                       padding: '2px 8px',
-                      borderRadius: '12px',
-                      background: (uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0) ? '#EF4444' : '#2563EB',
-                      color: '#FFFFFF'
-                    }}
-                  >
-                    {(uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0) ? t("Limit Reached") : t("Active Limit")}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', color: '#CBD5E1', flexWrap: 'wrap' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <ImageIcon size={14} style={{ color: '#60A5FA' }} />
-                    {t("Photos")}: <strong style={{ color: uploadQuota.remainingPhotos === 0 ? '#F87171' : '#60A5FA' }}>{uploadQuota.photoCount}/5</strong> ({uploadQuota.remainingPhotos} {t("remaining")})
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Video size={14} style={{ color: '#A78BFA' }} />
-                    {t("Videos")}: <strong style={{ color: uploadQuota.remainingVideos === 0 ? '#F87171' : '#A78BFA' }}>{uploadQuota.videoCount}/2</strong> ({uploadQuota.remainingVideos} {t("remaining")})
-                  </span>
-                </div>
-              </div>
-            )}
+                      borderRadius: '10px',
+                      background: isTargetMet ? '#15803D' : '#334155',
+                      color: isTargetMet ? '#FFFFFF' : '#CBD5E1'
+                    }}>
+                      {isTargetMet ? t("✓ 20+ Photos Goal Reached") : `${totalPhotos}/20 ${t("photos target")}`}
+                    </span>
+                  </div>
 
-            {/* Dropzone & Picker */}
+                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${progressPercent}%`,
+                        background: isTargetMet ? '#22C55E' : 'linear-gradient(90deg, #3B82F6, #60A5FA)',
+                        transition: 'width 0.25s ease'
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* VIDEOS MODE: Minimal Status Banner */}
+            {uploadTab === 'videos' && (() => {
+              const videosInQueue = uploadQueue.filter(i => i.type === 'video').length;
+              const remainingSlots = Math.max(0, (uploadQuota?.remainingVideos ?? 2) - videosInQueue);
+
+              return (
+                <div style={{
+                  background: 'rgba(124, 58, 237, 0.1)',
+                  border: '1px solid rgba(124, 58, 237, 0.25)',
+                  borderRadius: '12px',
+                  padding: '9px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexShrink: 0
+                }}>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Video size={13} style={{ color: '#C084FC' }} />
+                    {videosInQueue} / 2 {t("videos selected")}
+                  </span>
+                  <span style={{
+                    fontSize: '10.5px',
+                    fontWeight: '800',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    background: remainingSlots === 0 ? '#B91C1C' : '#6D28D9',
+                    color: '#FFFFFF'
+                  }}>
+                    {remainingSlots === 0 ? t("Batch Full") : `${remainingSlots} ${t("slot(s) left")}`}
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Dropzone & Picker (Adaptive to active Tab) */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <input
                 ref={fileInputRef}
                 type="file"
-                multiple
-                accept="image/*,video/*"
+                multiple={uploadTab === 'photos'}
+                accept={uploadTab === 'photos' ? "image/jpeg,image/png,image/webp" : "video/mp4,video/quicktime"}
                 onChange={handleFileChange}
-                disabled={isUploadingQueue || (uploadQuota?.isSquadCoordinator && uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0)}
+                disabled={isUploadingQueue || (uploadTab === 'videos' && ((uploadQuota?.remainingVideos ?? 2) - uploadQueue.filter(i => i.type === 'video').length <= 0))}
                 style={{
                   position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0,
-                  cursor: (isUploadingQueue || (uploadQuota?.isSquadCoordinator && uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0)) ? 'not-allowed' : 'pointer', zIndex: 2
+                  cursor: (isUploadingQueue || (uploadTab === 'videos' && ((uploadQuota?.remainingVideos ?? 2) - uploadQueue.filter(i => i.type === 'video').length <= 0))) ? 'not-allowed' : 'pointer',
+                  zIndex: 2
                 }}
               />
               <div style={{
-                padding: '24px 20px',
-                background: '#18181B',
-                border: '2px dashed rgba(255,255,255,0.18)',
-                borderRadius: '16px',
+                padding: '16px 14px',
+                background: '#121214',
+                border: '1.5px dashed rgba(255,255,255,0.14)',
+                borderRadius: '14px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '10px',
+                gap: '6px',
                 textAlign: 'center',
-                cursor: (isUploadingQueue || (uploadQuota?.isSquadCoordinator && uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0)) ? 'not-allowed' : 'pointer',
-                transition: 'border-color 0.2s ease, background 0.2s ease',
-                opacity: (uploadQuota?.isSquadCoordinator && uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0) ? 0.6 : 1
+                cursor: (isUploadingQueue || (uploadTab === 'videos' && ((uploadQuota?.remainingVideos ?? 2) - uploadQueue.filter(i => i.type === 'video').length <= 0))) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease',
+                opacity: (uploadTab === 'videos' && ((uploadQuota?.remainingVideos ?? 2) - uploadQueue.filter(i => i.type === 'video').length <= 0)) ? 0.5 : 1
               }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(37,99,235,0.15)', color: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Upload size={20} />
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: uploadTab === 'photos' ? 'rgba(37,99,235,0.15)' : 'rgba(124,58,237,0.15)',
+                  color: uploadTab === 'photos' ? '#3B82F6' : '#A78BFA',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {uploadTab === 'photos' ? <ImageIcon size={16} /> : <Video size={16} />}
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 3px', fontSize: '13.5px', fontWeight: '700', color: '#FFFFFF' }}>
-                    {uploadQuota?.isSquadCoordinator && uploadQuota.remainingPhotos === 0 && uploadQuota.remainingVideos === 0
-                      ? t("Upload limit reached for this batch (5 photos, 2 videos)")
-                      : (uploadQueue.length > 0 ? `${uploadQueue.length} files selected in queue` : t("Drag & drop files or click to browse"))}
+                  <p style={{ margin: '0 0 2px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF' }}>
+                    {uploadTab === 'photos'
+                      ? (uploadQueue.filter(i => i.type === 'photo').length > 0
+                          ? `${uploadQueue.filter(i => i.type === 'photo').length} photo(s) selected (tap to add)`
+                          : t("Choose Photos (1 or more)"))
+                      : (uploadQueue.filter(i => i.type === 'video').length > 0
+                          ? `${uploadQueue.filter(i => i.type === 'video').length} video(s) selected`
+                          : t("Choose Video (Max 2)"))}
                   </p>
-                  <span style={{ fontSize: '11.5px', color: '#94A3B8' }}>
-                    {uploadQuota?.isSquadCoordinator
-                      ? t("Squad coordinators can upload up to 5 photos and 2 videos")
-                      : "JPEG, PNG, WEBP, MP4 & MOV supported"}
+                  <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                    {uploadTab === 'photos'
+                      ? t("JPG, PNG, WEBP · Min 20KB each")
+                      : t("MP4, MOV · Max 500MB each")}
                   </span>
                 </div>
               </div>
@@ -3807,16 +3928,16 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
 
             {/* OVERALL QUEUE PROGRESS BAR (WHEN MULTIPLE FILES ARE SELECTED) */}
             {uploadQueue.length > 1 && (
-              <div style={{ background: '#18181B', padding: '12px 14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', marginBottom: '6px' }}>
+              <div style={{ background: '#121214', padding: '10px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginBottom: '5px' }}>
                   <span style={{ fontWeight: '700', color: '#FFF' }}>
-                    {t("Overall Progress")}: {overallQueueMetrics.completedCount} of {uploadQueue.length} files uploaded
+                    {t("Progress")}: {overallQueueMetrics.completedCount} of {uploadQueue.length}
                   </span>
                   <span style={{ fontWeight: '700', color: '#60A5FA' }}>
                     {formatFileSize(overallQueueMetrics.uploadedBytes)} / {formatFileSize(overallQueueMetrics.totalBytes)} ({overallQueueMetrics.percent}%)
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div 
                     style={{ 
                       height: '100%', 
@@ -3829,36 +3950,36 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
               </div>
             )}
 
-            {/* ENTERPRISE UPLOAD QUEUE CARDS WITH REAL TIME PROGRESS & SPEED */}
+            {/* QUEUE CARDS */}
             {uploadQueue.length > 0 && (
-              <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '2px' }}>
+              <div style={{ maxHeight: '170px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '2px' }}>
                 {uploadQueue.map((item) => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: '#18181B', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    {/* Instant Client-side Canvas Poster / Image Preview */}
-                    <div style={{ width: '40px', height: '40px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#27272A', position: 'relative' }}>
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', background: '#121214', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    {/* Thumbnail */}
+                    <div style={{ width: '34px', height: '34px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, background: '#27272A', position: 'relative' }}>
                       {item.posterPreviewUrl ? (
                         <img src={item.posterPreviewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : item.previewUrl && item.type === 'photo' ? (
                         <img src={item.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}>
-                          <Video size={18} />
+                          <Video size={16} />
                         </div>
                       )}
                     </div>
 
                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                        <p style={{ margin: 0, fontSize: '12.5px', fontWeight: '700', color: '#FFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '210px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <p style={{ margin: 0, fontSize: '11.5px', fontWeight: '700', color: '#FFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
                           {item.name}
                         </p>
-                        <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '700' }}>
+                        <span style={{ fontSize: '10.5px', color: '#94A3B8', fontWeight: '600' }}>
                           {formatFileSize(item.bytesUploaded || 0)} / {formatFileSize(item.size)}
                         </span>
                       </div>
 
-                      {/* Precise Multi-State Progress Bar */}
-                      <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                      {/* Progress Bar */}
+                      <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
                         <div 
                           style={{ 
                             height: '100%', 
@@ -3869,21 +3990,21 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
                         />
                       </div>
 
-                      {/* Real Speed, ETA & Status Metrics Line */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', fontSize: '10.5px' }}>
+                      {/* Status Metrics */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px', fontSize: '10px' }}>
                         <span style={{
                           fontWeight: '700',
                           color: item.status === 'completed' ? '#22C55E' : item.status === 'failed' ? '#EF4444' : item.status === 'cancelled' ? '#F59E0B' : '#60A5FA'
                         }}>
-                          {item.status === 'uploading' && `Uploading... ${item.progress}%`}
-                          {item.status === 'processing' && `Finalizing...`}
-                          {item.status === 'completed' && `Completed `}
+                          {item.status === 'uploading' && `${item.progress}%`}
+                          {item.status === 'processing' && `Finalizing`}
+                          {item.status === 'completed' && `Done ✓`}
                           {item.status === 'pending' && `Queued`}
                           {item.status === 'cancelled' && `Cancelled`}
-                          {item.status === 'failed' && `Failed (${item.error || 'Network error'})`}
+                          {item.status === 'failed' && `Failed`}
                         </span>
 
-                        <div style={{ display: 'flex', gap: '8px', color: '#94A3B8', fontWeight: '600' }}>
+                        <div style={{ display: 'flex', gap: '6px', color: '#94A3B8', fontWeight: '500' }}>
                           {item.speed && <span>{item.speed}</span>}
                           {item.eta && <span>{item.eta}</span>}
                         </div>
@@ -3891,15 +4012,15 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
                     </div>
 
                     {/* Action Buttons: Cancel / Retry / Remove */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                       {item.status === 'uploading' && (
                         <button
                           type="button"
                           onClick={(e) => cancelUploadItem(item.id, e)}
-                          title={t("Cancel upload")}
-                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }}
+                          title={t("Cancel")}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '3px' }}
                         >
-                          <X size={15} />
+                          <X size={14} />
                         </button>
                       )}
 
@@ -3907,10 +4028,10 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
                         <button
                           type="button"
                           onClick={(e) => retryUploadItem(item.id, e)}
-                          title={t("Retry upload")}
-                          style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: '4px' }}
+                          title={t("Retry")}
+                          style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: '3px' }}
                         >
-                          <RotateCcw size={14} />
+                          <RotateCcw size={13} />
                         </button>
                       )}
 
@@ -3919,9 +4040,9 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
                           type="button"
                           onClick={(e) => removeFromQueue(item.id, e)}
                           title={t("Remove")}
-                          style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+                          style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '3px' }}
                         >
-                          <X size={14} />
+                          <X size={13} />
                         </button>
                       )}
                     </div>
@@ -3930,40 +4051,80 @@ export default function FacultyJourneyTab({ token, facultyInfo, isAdmin = false,
               </div>
             )}
 
-            {/* ACTION BAR: [ CLOSE ] | [ START PARALLEL UPLOAD ] */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '4px', flexShrink: 0 }}>
+            {/* ACTION BAR: [ CLOSE ] | [ DYNAMIC SUBMIT BUTTON ] */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px', flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => setIsUploadModalOpen(false)}
                 disabled={isUploadingQueue}
                 style={{
-                  padding: '9px 18px', borderRadius: '50px', background: '#18181B',
-                  color: '#94A3B8', border: '1px solid rgba(255,255,255,0.1)',
-                  fontSize: '12.5px', fontWeight: '600', cursor: 'pointer',
+                  padding: '8px 16px', borderRadius: '10px', background: '#27272A',
+                  color: '#CBD5E1', border: '1px solid rgba(255,255,255,0.08)',
+                  fontSize: '12px', fontWeight: '600', cursor: isUploadingQueue ? 'not-allowed' : 'pointer',
                   transition: 'all 0.15s ease'
                 }}
-                className="hover:bg-zinc-800 hover:text-white"
+                className="hover:bg-zinc-700 hover:text-white"
               >
                 {t("Close")}
               </button>
 
-              <button
-                type="button"
-                onClick={handleUploadQueue}
-                disabled={isUploadingQueue || uploadQueue.length === 0}
-                className="upload-btn-gradient"
-                style={{
-                  padding: '9px 22px', borderRadius: '50px',
-                  color: '#FFFFFF', fontSize: '12.5px', fontWeight: '700',
-                  border: 'none', cursor: isUploadingQueue || uploadQueue.length === 0 ? 'not-allowed' : 'pointer',
-                  opacity: isUploadingQueue || uploadQueue.length === 0 ? 0.5 : 1,
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  boxShadow: '0 4px 14px rgba(37,99,235,0.3)'
-                }}
-              >
-                {isUploadingQueue && <RefreshCw size={13} className="animate-spin" />}
-                <span>{isUploadingQueue ? t('Uploading in Parallel...') : t('Start Parallel Upload')}</span>
-              </button>
+              {(() => {
+                const isCoordinator = !!uploadQuota?.isSquadCoordinator || !!uploadQuota?.isCoordinator;
+                const photosInQueue = uploadQueue.filter(i => i.type === 'photo').length;
+                const videosInQueue = uploadQueue.filter(i => i.type === 'video').length;
+                const pendingPhotos = uploadQueue.filter(i => i.type === 'photo' && (i.status === 'pending' || i.status === 'failed' || i.status === 'cancelled')).length;
+                const pendingVideos = uploadQueue.filter(i => i.type === 'video' && (i.status === 'pending' || i.status === 'failed' || i.status === 'cancelled')).length;
+
+                let isDisabled = isUploadingQueue;
+                let buttonText = t('Upload');
+
+                if (uploadTab === 'photos') {
+                  if (photosInQueue === 0) {
+                    isDisabled = true;
+                    buttonText = t('Select Photos');
+                  } else if (pendingPhotos === 0) {
+                    isDisabled = true;
+                    buttonText = t('Uploaded ✓');
+                  } else {
+                    buttonText = isUploadingQueue
+                      ? t('Uploading {{count}}...').replace('{{count}}', pendingPhotos)
+                      : t('Upload {{count}} Photo(s)').replace('{{count}}', pendingPhotos);
+                  }
+                } else {
+                  if (videosInQueue === 0) {
+                    isDisabled = true;
+                    buttonText = t('Select Video');
+                  } else if (pendingVideos === 0) {
+                    isDisabled = true;
+                    buttonText = t('Uploaded ✓');
+                  } else {
+                    buttonText = isUploadingQueue
+                      ? t('Uploading...')
+                      : t('Upload {{count}} Video(s)').replace('{{count}}', pendingVideos);
+                  }
+                }
+
+                return (
+                  <button
+                    type="button"
+                    onClick={handleUploadQueue}
+                    disabled={isDisabled}
+                    className="upload-btn-gradient"
+                    style={{
+                      padding: '8px 18px', borderRadius: '10px',
+                      color: '#FFFFFF', fontSize: '12px', fontWeight: '700',
+                      border: 'none', cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: isDisabled ? 0.5 : 1,
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      boxShadow: isDisabled ? 'none' : '0 4px 12px rgba(37,99,235,0.35)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {isUploadingQueue && <RefreshCw size={13} className="animate-spin" />}
+                    <span>{buttonText}</span>
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>,

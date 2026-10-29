@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Award, Download, RefreshCw } from 'lucide-react'
+import { Award, Download, RefreshCw, Lock, Sparkles, ChevronRight } from 'lucide-react'
 import { useLanguage } from './context/LanguageContext'
 import { generateCertificate } from './utils/generateCertificate'
 import API_BASE_URL from '@/config/apiConfig';
 
-export default function UserCertificatesTab({ token, myData, canAccessCertificates }) {
+export default function UserCertificatesTab({ token, myData, canAccessCertificates, onOpenFeedback }) {
   const { t } = useLanguage()
   const [certs, setCerts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -54,7 +54,8 @@ export default function UserCertificatesTab({ token, myData, canAccessCertificat
       }
       await generateCertificate(
         { fullName: data.fullName, ltcId: data.ltcId },
-        { startDate: data.startDate, endDate: data.endDate }
+        { startDate: data.startDate, endDate: data.endDate },
+        'Certificate_-_Life_Awakening_Program_signed_final.pdf'
       )
       if (typeof window !== 'undefined' && (myData?.id || data?.ltcId)) {
         localStorage.setItem(`cert_downloaded_${myData?.id || data?.ltcId}`, 'true')
@@ -69,9 +70,10 @@ export default function UserCertificatesTab({ token, myData, canAccessCertificat
 
   const completionCerts = certs.filter(c => c.type === 'completion')
   const specialCerts = certs.filter(c => c.type !== 'completion')
-  const hasCommonCert = canAccessCertificates !== undefined ? canAccessCertificates : 
-    (myData && (myData.service_feedback_submitted || 
-    (typeof window !== 'undefined' && myData?.id && localStorage.getItem(`cert_downloaded_${myData.id}`) === 'true')))
+  
+  // The certificate is available only after the Service Trainer Feedback form is completed
+  const hasFeedbackSubmitted = Boolean(myData?.service_feedback_submitted)
+  const hasCommonCert = canAccessCertificates !== undefined ? canAccessCertificates : hasFeedbackSubmitted
 
   const renderCertCard = (c) => {
     return (
@@ -125,10 +127,6 @@ export default function UserCertificatesTab({ token, myData, canAccessCertificat
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}><div className="spinner spinner-sm" /></div>
-      ) : (!hasCommonCert && certs.length === 0) ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>
-          {t("No certificates issued yet.")}
-        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {/* Completion Certificate Category */}
@@ -136,34 +134,75 @@ export default function UserCertificatesTab({ token, myData, canAccessCertificat
             <h3 style={{ fontSize: '15px', fontWeight: '850', color: '#0f172a', marginBottom: '14px', paddingLeft: '8px', borderLeft: '4px solid #ea580c', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
               {t("Completion Certificate")}
             </h3>
-            {!hasCommonCert && completionCerts.length === 0 ? (
-              <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1.5px dashed #cbd5e1', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                {t("No completion certificates issued yet.")}
+            
+            {!hasCommonCert ? (
+              <div style={{
+                padding: '20px 22px',
+                background: '#faf5ff',
+                borderRadius: '14px',
+                border: '1.5px dashed #d8b4fe',
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                justifyContent: 'space-between',
+                gap: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#f3e8ff', color: '#7e22ce', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #e9d5ff' }}>
+                    <Lock size={20} strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 3px 0', fontSize: '14.5px', fontWeight: '800', color: '#581c87' }}>
+                      {t("Certificate of Participation Locked")}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '12.5px', color: '#7e22ce', lineHeight: '1.4' }}>
+                      {t("Please complete and submit the Service & Trainer Feedback form to unlock and download your official Life Awakening Program certificate.")}
+                    </p>
+                  </div>
+                </div>
+                {onOpenFeedback && (
+                  <button
+                    type="button"
+                    onClick={onOpenFeedback}
+                    className="btn btn-primary"
+                    style={{
+                      borderRadius: '50px',
+                      padding: '8px 18px',
+                      fontSize: '12.5px',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#7e22ce',
+                      borderColor: '#7e22ce'
+                    }}
+                  >
+                    <Sparkles size={14} /> {t("Complete Feedback")} <ChevronRight size={14} />
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {hasCommonCert && (
-                  <div style={{ border: '1.5px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', flexWrap: 'wrap', gap: '12px' }}>
-                    <div style={{ flex: 1, minWidth: '150px' }}>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '750', color: '#0f172a' }}>{t("Certificate of Participation")}</h4>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                        {t("MIT-WPU Life Transformation Camp")}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleDownloadCertificate}
-                      disabled={certLoading}
-                      className="btn btn-primary"
-                      style={{ borderRadius: '50px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', height: 'auto' }}
-                    >
-                      {certLoading ? (
-                        <><RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> {t("Generating...")}</>
-                      ) : (
-                        <><Download size={13} /> {t("Download")}</>
-                      )}
-                    </button>
+                <div style={{ border: '1.5px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '750', color: '#0f172a' }}>{t("Certificate of Participation")}</h4>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: '#64748b' }}>
+                      {t("Life Awakening Program (LAP)")}
+                    </p>
                   </div>
-                )}
+                  <button
+                    onClick={handleDownloadCertificate}
+                    disabled={certLoading}
+                    className="btn btn-primary"
+                    style={{ borderRadius: '50px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', height: 'auto' }}
+                  >
+                    {certLoading ? (
+                      <><RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> {t("Generating...")}</>
+                    ) : (
+                      <><Download size={13} /> {t("Download")}</>
+                    )}
+                  </button>
+                </div>
                 {completionCerts.map(c => renderCertCard(c))}
               </div>
             )}

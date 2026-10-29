@@ -1672,6 +1672,52 @@ const downloadCertificate = async (req, res) => {
       return res.redirect(url);
     }
 
+    // 6. Default / Completion Certificate: Compile Life Awakening Program signed certificate
+    const certTemplatePath = path.join(__dirname, '../certificates/Certificate_-_Life_Awakening_Program_signed_final.pdf');
+    if (fs.existsSync(certTemplatePath)) {
+      const arrayBuffer = fs.readFileSync(certTemplatePath);
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      pdfDoc.registerFontkit(fontkit);
+      const [page] = pdfDoc.getPages();
+      const { width: pageWidth } = page.getSize();
+
+      const fontMediumPath = path.join(__dirname, '../../frontend/public/fonts/Poppins-Medium.ttf');
+      const fontBoldPath = path.join(__dirname, '../../frontend/public/fonts/Poppins-Bold.ttf');
+      let poppinsFont = null;
+      if (fs.existsSync(fontMediumPath)) {
+        poppinsFont = await pdfDoc.embedFont(fs.readFileSync(fontMediumPath));
+      } else if (fs.existsSync(fontBoldPath)) {
+        poppinsFont = await pdfDoc.embedFont(fs.readFileSync(fontBoldPath));
+      }
+
+      const rawFullName = cert.student_name || 'Student';
+      const fullName = rawFullName.replace(/^(mr\.|ms\.|mrs\.|dr\.|prof\.|shri\.|smt\.|mr|ms|mrs|dr|prof|shri|smt)\s+/i, '').trim();
+
+      let nameSize = 24;
+      let nameWidth = poppinsFont ? poppinsFont.widthOfTextAtSize(fullName, nameSize) : (fullName.length * 12);
+      if (poppinsFont) {
+        while (nameWidth > 440 && nameSize > 13) {
+          nameSize -= 0.5;
+          nameWidth = poppinsFont.widthOfTextAtSize(fullName, nameSize);
+        }
+      }
+      const nameX = (pageWidth - nameWidth) / 2;
+      const nameY = 514;
+      const fontColor = rgb(0.06, 0.05, 0.17);
+
+      if (poppinsFont) {
+        page.drawText(fullName, { x: nameX, y: nameY, size: nameSize, font: poppinsFont, color: fontColor });
+      } else {
+        page.drawText(fullName, { x: nameX, y: nameY, size: nameSize, color: fontColor });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const safeFilename = `Certificate_Life_Awakening_Program_${fullName.replace(/\s+/g, '_')}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      return res.send(Buffer.from(pdfBytes));
+    }
+
     return res.status(400).send('No certificate URL or template data found.');
   } catch (err) {
     console.error('Error downloading certificate:', err);

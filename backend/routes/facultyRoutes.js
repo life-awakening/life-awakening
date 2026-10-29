@@ -27,14 +27,15 @@ router.put('/change-password', authMiddleware(['faculty', 'ltc_member']), (req, 
 const multer = require('multer');
 const upload = multer({ limits: { fileSize: 500 * 1024 * 1024 } });
 
-router.get('/journey-media', authMiddleware(['faculty', 'ltc_member']), facultyController.getJourneyMedia);
-router.post('/journey-media', authMiddleware(['faculty', 'ltc_member']), facultyController.uploadJourneyMedia);
-router.post('/journey-media/binary-upload', authMiddleware(['faculty', 'ltc_member']), upload.single('file'), facultyController.uploadJourneyBinaryMedia);
-router.post('/journey-media/presigned-url', authMiddleware(['faculty', 'ltc_member']), facultyController.getJourneyPresignedUrl);
-router.post('/journey-media/multipart-part-url', authMiddleware(['faculty', 'ltc_member']), facultyController.getJourneyMultipartPartUrl);
-router.post('/journey-media/complete-multipart', authMiddleware(['faculty', 'ltc_member']), facultyController.completeJourneyMultipartUpload);
-router.post('/journey-media/abort-multipart', authMiddleware(['faculty', 'ltc_member']), facultyController.abortJourneyMultipartUpload);
-router.delete('/journey-media/:id', authMiddleware(['faculty', 'ltc_member']), facultyController.deleteJourneyMedia);
+router.get('/journey-media', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.getJourneyMedia);
+router.post('/journey-media', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.uploadJourneyMedia);
+router.post('/journey-media/batch', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.uploadJourneyMediaBatch);
+router.post('/journey-media/binary-upload', authMiddleware(['faculty', 'ltc_member', 'coordinator']), upload.single('file'), facultyController.uploadJourneyBinaryMedia);
+router.post('/journey-media/presigned-url', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.getJourneyPresignedUrl);
+router.post('/journey-media/multipart-part-url', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.getJourneyMultipartPartUrl);
+router.post('/journey-media/complete-multipart', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.completeJourneyMultipartUpload);
+router.post('/journey-media/abort-multipart', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.abortJourneyMultipartUpload);
+router.delete('/journey-media/:id', authMiddleware(['faculty', 'ltc_member', 'coordinator']), facultyController.deleteJourneyMedia);
 
 // Performance Admin routes for Faculty / LTC Members (Fall In, Yoga, Agriculture)
 const superadminController = require('../controllers/superadminController');
