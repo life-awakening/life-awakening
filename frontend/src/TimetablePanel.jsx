@@ -36,6 +36,7 @@ export function calculateLrpDay(startDateStr, currentDateObj = new Date()) {
 
 export default function TimetablePanel({ compact = false, onViewDetail, style, activeBatch }) {
   const { t } = useLanguage()
+  const [activeProgram, setActiveProgram] = useState('wellness') // 'wellness' (default) or 'lap'
   const [selectedDay, setSelectedDay] = useState(1)
   const [compactSelectedDay, setCompactSelectedDay] = useState(1)
   const [activeSubTab, setActiveSubTab] = useState('schedule') // 'schedule' or 'dresscode'
@@ -810,6 +811,178 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
     }
   }
 
+  // Official Wellness Retreat Schedule matching MSc_Yoga_LTC_Visit_Tentative_Plan_Nov_2026-5.pdf
+  // (Yoga Academic and Wellness Retreat at LTC, 2–3 November 2026)
+  const wellnessDetailedSchedule = {
+    1: [
+      {
+        time: "02:00 PM - 05:00 PM",
+        duration: "180 Min",
+        title: "Depart from MIT-WPU Campus and Travel to LTC",
+        location: "MIT-WPU Campus to LTC Boribel",
+        dress: "Travel / Casual Dress",
+        description: "Departure for 19 participants (15 M.Sc. Yoga students & 4 faculty members) from MIT-WPU campus to LTC Boribel via Tempo Traveller / bus.",
+        groupTrack: "19 Participants (15 M.Sc. Yoga + 4 Faculty) | Tempo Traveller / Bus",
+        type: "registration"
+      },
+      {
+        time: "05:00 PM - 07:00 PM",
+        duration: "120 Min",
+        title: "Arrival, Check-in & Rest; Visit to LTC Gazebos",
+        location: "LTC Reception / Hostels / Gazebos",
+        dress: "Casual Dress",
+        description: "Arrival at Life Transformation Centre (LTC), room allotment and accommodation, settling in, and a brief visit to LTC gazebos.",
+        groupTrack: "Accommodation & Room Allotment",
+        type: "registration"
+      },
+      {
+        time: "07:00 PM - 08:30 PM",
+        duration: "90 Min",
+        title: "Light Digestible Dinner & Rest",
+        location: "Dining Hall",
+        dress: "Casual Dress",
+        description: "Light, easily digestible dinner with limited chilli and spices (dalia suitable for Shatkarma digestive preparation) followed by rest.",
+        groupTrack: "Satvik Dalia (Limited chilli & spices)",
+        type: "meals"
+      },
+      {
+        time: "08:30 PM - 09:30 PM",
+        duration: "60 Min",
+        title: "Trataka Practice & Mantra Yoga Chanting",
+        location: "Gazebo / Sanskruti Hall",
+        dress: "Yoga Dress",
+        description: "Trataka practice (8:30–9:00 p.m.) Shatkarma cleansing practice that develops concentration and prepares the mind for meditation, followed by Mantra Yoga / mantra chanting (9:00–9:30 p.m.). Led by Dr. Ganesh Prasad.",
+        groupTrack: "Led by Dr. Ganesh Prasad | Candles & ~10 Yoga blocks",
+        type: "academic"
+      },
+      {
+        time: "10:00 PM",
+        duration: "—",
+        title: "Rest & Lights Off",
+        location: "Hostels",
+        dress: "Night Dress",
+        description: "Night rest and lights off to prepare for early morning Shankhaprakshalana.",
+        type: "rest"
+      }
+    ],
+    2: [
+      {
+        time: "06:00 AM - 10:00 AM",
+        duration: "240 Min",
+        title: "Shankhaprakshalana (Yoga Cleansing of Digestive System)",
+        location: "Practice Area & Lawns",
+        dress: "Comfortable Yoga Dress",
+        description: "Shankhaprakshalana (Master Yoga Cleansing of the Digestive System). Guided Shatkarma detox session under expert supervision.",
+        groupTrack: "Led by Dr. Ganesh Prasad | 40–50 L lukewarm water, 1 kg lemons & 1 kg white salt",
+        type: "academic"
+      },
+      {
+        time: "10:00 AM - 11:00 AM",
+        duration: "60 Min",
+        title: "Post-Practice Breakfast & Rest",
+        location: "Dining Hall",
+        dress: "Casual Dress",
+        description: "Post-cleansing nutritious breakfast: Soft khichdi with a little ghee and two bananas per participant; green tea and a little jaggery, followed by rest.",
+        groupTrack: "Soft khichdi with ghee, 2 bananas, green tea & jaggery",
+        type: "meals"
+      },
+      {
+        time: "11:00 AM - 12:00 PM",
+        duration: "60 Min",
+        title: "Introduction to Sound Healing with Singing Bowls",
+        location: "Sanskruti Hall",
+        dress: "Yoga / Clean Attire",
+        description: "Foundational theory, acoustic frequencies, vibrational healing, and introduction to Sound Healing using singing bowls.",
+        groupTrack: "Led by Divya Ma'am | Tibetan Singing Bowls",
+        type: "academic"
+      },
+      {
+        time: "12:00 PM - 01:00 PM",
+        duration: "60 Min",
+        title: "Sound Bowl Meditation: Learning, Practice and Teaching",
+        location: "Sanskruti Hall",
+        dress: "Yoga / Clean Attire",
+        description: "Immersive Sound Bowl Meditation: experiential learning, deep meditation practice, resonance, and teaching methodology.",
+        groupTrack: "Led by Divya Ma'am | Sound Bowl Meditation",
+        type: "academic"
+      },
+      {
+        time: "01:00 PM - 02:00 PM",
+        duration: "60 Min",
+        title: "Light Satvik Lunch & Rest",
+        location: "Dining Hall",
+        dress: "Casual Dress",
+        description: "Light digestible satvik lunch: Dal, one vegetable, roti, rice and fresh salad, with a little ghee, followed by rest.",
+        groupTrack: "Satvik Diet: Dal, vegetable, roti, rice, salad & ghee",
+        type: "meals"
+      },
+      {
+        time: "02:00 PM - 03:00 PM",
+        duration: "60 Min",
+        title: "Further Sound Bowl Meditation: Training & Pedagogy",
+        location: "Sanskruti Hall",
+        dress: "Yoga / Clean Attire",
+        description: "Further Sound Bowl Meditation: advanced clinical techniques, practical demonstration, student teacher training, and pedagogy.",
+        groupTrack: "Led by Divya Ma'am | Sound Bowl Training & Pedagogy",
+        type: "academic"
+      },
+      {
+        time: "03:00 PM - 03:30 PM",
+        duration: "30 Min",
+        title: "Green Tea, Light Refreshments & Prepare for Departure",
+        location: "Dining Hall / Hostels",
+        dress: "Travel Attire",
+        description: "Green tea and light refreshments, gathering personal belongings, and preparing for departure.",
+        groupTrack: "Light Refreshments & Green Tea",
+        type: "meals"
+      },
+      {
+        time: "03:30 PM",
+        duration: "—",
+        title: "Depart from LTC for MIT-WPU Campus",
+        location: "LTC Transport Bay",
+        dress: "Travel Attire",
+        description: "Concluding group departure from LTC Boribel back to MIT-WPU campus.",
+        groupTrack: "Return Transport to MIT-WPU Campus",
+        type: "registration"
+      }
+    ]
+  }
+
+  // Venue and dress code guidelines matching the Wellness Retreat schedule
+  const wellnessDressCodeRules = [
+    { activity: "Depart from MIT-WPU & Travel to LTC", venue: "Transit / Tempo Traveller", dress: "Travel / Casual Dress", note: "Day 1 Transport for 19 participants (15 M.Sc. Yoga + 4 faculty)" },
+    { activity: "Arrival, Check-in & Gazebos Visit", venue: "Reception / Hostels / Gazebos", dress: "Casual Dress", note: "Accommodation allotment & orientation walk" },
+    { activity: "Light Digestible Dinner & Rest", venue: "Dining Hall", dress: "Casual Dress", note: "Satvik dalia without heavy chilli or spices" },
+    { activity: "Trataka Practice & Mantra Yoga Chanting", venue: "Gazebo / Sanskruti Hall", dress: "Yoga Dress", note: "Led by Dr. Ganesh Prasad (Candles & ~10 Yoga blocks)" },
+    { activity: "Shankhaprakshalana (Digestive Cleansing)", venue: "Practice Area & Lawns", dress: "Comfortable Yoga Dress", note: "Shatkarma detox with lukewarm salt & lemon water" },
+    { activity: "Post-Practice Breakfast & Satvik Meals", venue: "Dining Hall", dress: "Casual Dress", note: "Soft khichdi with ghee, bananas, green tea & light lunch" },
+    { activity: "Sound Healing & Sound Bowl Meditation", venue: "Sanskruti Hall", dress: "Yoga / Clean Attire", note: "Led by Divya Ma'am (Singing bowls practice & pedagogy)" },
+    { activity: "Departure Preparation & Return Journey", venue: "Transport Bay & Hostels", dress: "Travel Attire", note: "Return journey from LTC Boribel to MIT-WPU" }
+  ]
+
+  // Day theme accents for Wellness Retreat
+  const wellnessDayMeta = {
+    1: {
+      badgeBg: '#047857',
+      badgeText: '#ffffff',
+      tag: 'Day 1 (2 Nov 2026) — Arrival, Dalia Dinner, Trataka & Mantra Yoga',
+      accentColor: '#047857',
+      bgLight: '#f0fdf4',
+      borderColor: '#bbf7d0',
+      dateLabel: '2 Nov 2026'
+    },
+    2: {
+      badgeBg: '#0284c7',
+      badgeText: '#ffffff',
+      tag: 'Day 2 (3 Nov 2026) — Shankhaprakshalana, Sound Bowl Meditation & Departure',
+      accentColor: '#0284c7',
+      bgLight: '#f0f9ff',
+      borderColor: '#bae6fd',
+      dateLabel: '3 Nov 2026'
+    }
+  }
+
   // Color coding tags based on activity type
   const getActivityStyles = (type) => {
     const labelMap = {
@@ -835,14 +1008,15 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
 
   // COMPACT VIEW FOR DASHBOARD CARDS
   if (compact) {
-    const batchObj = activeBatch || activeBatchInfo?.activeBatch;
-    const activeDay = batchObj && (batchObj.start_date_str || batchObj.start_date)
-      ? calculateLrpDay(batchObj.start_date_str || batchObj.start_date)
-      : (activeBatchInfo?.currentDay || 1);
+    const isWellness = activeProgram === 'wellness';
+    const activeDetailedSchedule = isWellness ? wellnessDetailedSchedule : detailedSchedule;
+    const activeDayMeta = isWellness ? wellnessDayMeta : dayMeta;
+    const availableDays = isWellness ? [1, 2] : [1, 2, 3, 4];
 
-    const dayNum = parseInt(compactSelectedDay);
-    const activitiesToRender = detailedSchedule[dayNum] || [];
-    const currentMeta = dayMeta[dayNum] || dayMeta[1];
+    const rawDayNum = parseInt(compactSelectedDay) || 1;
+    const dayNum = (isWellness && rawDayNum > 2) ? 1 : rawDayNum;
+    const activitiesToRender = activeDetailedSchedule[dayNum] || [];
+    const currentMeta = activeDayMeta[dayNum] || activeDayMeta[1];
 
     return (
       <div 
@@ -867,7 +1041,9 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
               {t("LAP Schedule")}
             </h2>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}>
-              {t("Residential schedule & activity agenda")}
+              {isWellness
+                ? t("Yoga Academic & Wellness Retreat (2–3 Nov 2026)")
+                : t("Residential schedule & activity agenda")}
             </p>
           </div>
 
@@ -894,7 +1070,58 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           </button>
         </div>
 
-        {/* Day Segmented Selector (Day 1 to 4) */}
+        {/* Schedule Selector: Wellness Retreat Programme (Default First) | Life Awakening Schedule */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveProgram('wellness');
+              if (compactSelectedDay > 2) setCompactSelectedDay(1);
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: activeProgram === 'wellness' ? '700' : '600',
+              border: activeProgram === 'wellness' ? '1px solid #047857' : '1px solid #cbd5e1',
+              cursor: 'pointer',
+              background: activeProgram === 'wellness' ? '#047857' : '#ffffff',
+              color: activeProgram === 'wellness' ? '#ffffff' : '#475569',
+              boxShadow: activeProgram === 'wellness' ? '0 1px 3px rgba(4, 120, 87, 0.2)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            {t("Wellness Retreat Programme")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveProgram('lap');
+              if (compactSelectedDay > 4) setCompactSelectedDay(1);
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: activeProgram === 'lap' ? '700' : '600',
+              border: activeProgram === 'lap' ? '1px solid #154388' : '1px solid #cbd5e1',
+              cursor: 'pointer',
+              background: activeProgram === 'lap' ? '#154388' : '#ffffff',
+              color: activeProgram === 'lap' ? '#ffffff' : '#475569',
+              boxShadow: activeProgram === 'lap' ? '0 1px 3px rgba(21, 67, 136, 0.2)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            {t("Life Awakening Schedule")}
+          </button>
+        </div>
+
+        {/* Day Segmented Selector */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -907,12 +1134,14 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
           flexWrap: 'wrap'
         }}>
           <div style={{ display: 'flex', gap: '6px' }}>
-            {[1, 2, 3, 4].map((val) => {
-              const isSel = parseInt(compactSelectedDay) === val;
-              const meta = dayMeta[val] || dayMeta[1];
+            {availableDays.map((val) => {
+              const isSel = dayNum === val;
+              const meta = activeDayMeta[val] || activeDayMeta[1];
+              const label = isWellness ? (val === 1 ? 'Day 1 (2 Nov)' : 'Day 2 (3 Nov)') : t(`Day ${val}`);
               return (
                 <button
                   key={val}
+                  type="button"
                   onClick={() => setCompactSelectedDay(val)}
                   style={{
                     padding: '6px 14px',
@@ -927,7 +1156,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  {t(`Day ${val}`)}
+                  {label}
                 </button>
               );
             })}
@@ -1013,7 +1242,12 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
   }
 
   // DETAILED VIEW (WITH CLEAN DAY TABS AND SCHEDULE TABLE)
-  const currentMeta = dayMeta[selectedDay] || dayMeta[1];
+  const isWellness = activeProgram === 'wellness';
+  const activeDetailedSchedule = isWellness ? wellnessDetailedSchedule : detailedSchedule;
+  const activeDayMeta = isWellness ? wellnessDayMeta : dayMeta;
+  const activeDressCodeRules = isWellness ? wellnessDressCodeRules : dressCodeRules;
+  const effectiveSelectedDay = (isWellness && selectedDay > 2) ? 1 : selectedDay;
+  const currentMeta = activeDayMeta[effectiveSelectedDay] || activeDayMeta[1];
 
   return (
     <div 
@@ -1038,7 +1272,9 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
             {t("LAP Schedule")}
           </h3>
           <p style={{ fontSize: '13.5px', color: '#64748b', margin: '4px 0 0 0', fontWeight: '500' }}>
-            {t("Official residential schedule, timings, venues, and dress codes")}
+            {isWellness
+              ? t("Yoga Academic and Wellness Retreat at LTC (2–3 November 2026)")
+              : t("Official residential schedule, timings, venues, and dress codes")}
           </p>
         </div>
         
@@ -1094,21 +1330,123 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
         </div>
       </div>
 
+      {/* Program Switcher Tabs: Life Awakening Schedule | Wellness Retreat Programme */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        background: '#f8fafc',
+        padding: '10px 14px',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveProgram('wellness');
+              if (selectedDay > 2) setSelectedDay(1);
+            }}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: activeProgram === 'wellness' ? '700' : '600',
+              border: activeProgram === 'wellness' ? '1px solid #047857' : '1px solid #cbd5e1',
+              cursor: 'pointer',
+              background: activeProgram === 'wellness' ? '#047857' : '#ffffff',
+              color: activeProgram === 'wellness' ? '#ffffff' : '#334155',
+              boxShadow: activeProgram === 'wellness' ? '0 1px 3px rgba(4, 120, 87, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px'
+            }}
+          >
+            <span>{t("Wellness Retreat Programme")}</span>
+            <span style={{
+              fontSize: '11px',
+              padding: '2px 7px',
+              borderRadius: '10px',
+              background: activeProgram === 'wellness' ? 'rgba(255,255,255,0.2)' : '#dcfce7',
+              color: activeProgram === 'wellness' ? '#ffffff' : '#047857',
+              fontWeight: '700'
+            }}>
+              2–3 Nov 2026
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveProgram('lap');
+              if (selectedDay > 4) setSelectedDay(1);
+            }}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: activeProgram === 'lap' ? '700' : '600',
+              border: activeProgram === 'lap' ? '1px solid #154388' : '1px solid #cbd5e1',
+              cursor: 'pointer',
+              background: activeProgram === 'lap' ? '#154388' : '#ffffff',
+              color: activeProgram === 'lap' ? '#ffffff' : '#334155',
+              boxShadow: activeProgram === 'lap' ? '0 1px 3px rgba(21, 67, 136, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px'
+            }}
+          >
+            <span>{t("Life Awakening Schedule")}</span>
+            <span style={{
+              fontSize: '11px',
+              padding: '2px 7px',
+              borderRadius: '10px',
+              background: activeProgram === 'lap' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+              color: activeProgram === 'lap' ? '#ffffff' : '#475569',
+              fontWeight: '700'
+            }}>
+              4 Days
+            </span>
+          </button>
+        </div>
+
+        {activeProgram === 'wellness' ? (
+          <div style={{ fontSize: '12px', color: '#047857', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>15 M.Sc. Yoga Students & 4 Faculty Members · LTC Boribel</span>
+          </div>
+        ) : (
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+            <span>Standard 4-Day Immersion Plan</span>
+          </div>
+        )}
+      </div>
+
       {activeSubTab === 'schedule' && (
         <>
-          {/* Day selection tabs (Day 1, 2, 3, 4 Layout) */}
+          {/* Day selection tabs */}
           <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
-            {[
-              { day: 1, label: 'Day 1' },
-              { day: 2, label: 'Day 2' },
-              { day: 3, label: 'Day 3' },
-              { day: 4, label: 'Day 4' }
-            ].map(({ day, label }) => {
-              const isSel = selectedDay === day;
-              const meta = dayMeta[day] || dayMeta[1];
+            {(isWellness
+              ? [
+                  { day: 1, label: 'Day 1 — 2 Nov 2026' },
+                  { day: 2, label: 'Day 2 — 3 Nov 2026' }
+                ]
+              : [
+                  { day: 1, label: 'Day 1' },
+                  { day: 2, label: 'Day 2' },
+                  { day: 3, label: 'Day 3' },
+                  { day: 4, label: 'Day 4' }
+                ]
+            ).map(({ day, label }) => {
+              const isSel = effectiveSelectedDay === day;
+              const meta = activeDayMeta[day] || activeDayMeta[1];
               return (
                 <button
                   key={day}
+                  type="button"
                   onClick={() => setSelectedDay(day)}
                   style={{
                     padding: '8px 20px',
@@ -1130,7 +1468,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
             })}
           </div>
 
-          {/* Active Day Banner (Clean, Flat, Non-Glassmorphic) */}
+          {/* Active Day Banner */}
           <div style={{
             background: '#ffffff',
             border: '1px solid #e2e8f0',
@@ -1153,11 +1491,14 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
                 letterSpacing: '0.4px',
                 textTransform: 'uppercase'
               }}>
-                Day {selectedDay}
+                Day {effectiveSelectedDay} {isWellness && (effectiveSelectedDay === 1 ? '· 2 Nov' : '· 3 Nov')}
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>
+                {currentMeta.tag}
               </span>
             </div>
             <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '600' }}>
-              {detailedSchedule[selectedDay]?.length || 0} {t("scheduled sessions")}
+              {activeDetailedSchedule[effectiveSelectedDay]?.length || 0} {t("scheduled sessions")}
             </span>
           </div>
 
@@ -1169,7 +1510,7 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
               <div>{t("Venue & Dress Code")}</div>
               <div style={{ textAlign: 'right' }}>{t("Category")}</div>
             </div>
-            {detailedSchedule[selectedDay]?.map((activity, idx) => {
+            {activeDetailedSchedule[effectiveSelectedDay]?.map((activity, idx) => {
               const styles = getActivityStyles(activity.type);
               return (
                 <div key={idx} className="lrp-schedule-row">
@@ -1228,24 +1569,26 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
             })}
           </div>
 
-          {/* Official Footnote matching reference image */}
-          <div style={{
-            marginTop: '12px',
-            padding: '12px 16px',
-            background: '#f8fafc',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            fontSize: '12.5px',
-            color: '#475569',
-            lineHeight: '1.6'
-          }}>
-            <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#1e293b' }}>
-              <strong>{t("Note")}:</strong> {t("The activities under the five pillars will be different every day.")}
-            </p>
-            <p style={{ margin: 0, fontStyle: 'italic', color: '#64748b', fontSize: '11.5px' }}>
-              * {t("The LTC reserves the rights to change or modify any of the activities.")}
-            </p>
-          </div>
+          {/* Footnote */}
+          {!isWellness && (
+            <div style={{
+              marginTop: '12px',
+              padding: '12px 16px',
+              background: '#f8fafc',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0',
+              fontSize: '12.5px',
+              color: '#475569',
+              lineHeight: '1.6'
+            }}>
+              <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#1e293b' }}>
+                <strong>{t("Note")}:</strong> {t("The activities under the five pillars will be different every day.")}
+              </p>
+              <p style={{ margin: 0, fontStyle: 'italic', color: '#64748b', fontSize: '11.5px' }}>
+                * {t("The LTC reserves the rights to change or modify any of the activities.")}
+              </p>
+            </div>
+          )}
         </>
       )}
 
@@ -1280,11 +1623,11 @@ export default function TimetablePanel({ compact = false, onViewDetail, style, a
                 </tr>
               </thead>
               <tbody>
-                {dressCodeRules.map((rule, index) => (
+                {activeDressCodeRules.map((rule, index) => (
                   <tr 
                     key={index} 
                     style={{ 
-                      borderBottom: index < dressCodeRules.length - 1 ? '1px solid #f1f5f9' : 'none', 
+                      borderBottom: index < activeDressCodeRules.length - 1 ? '1px solid #f1f5f9' : 'none', 
                       transition: 'background-color 0.15s ease' 
                     }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} 

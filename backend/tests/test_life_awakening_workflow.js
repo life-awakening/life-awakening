@@ -10,6 +10,8 @@
  * 6. Legacy LTC Member Import Format Preservation
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const pool = require('../config/db');
 const { normalizeClassGrade, CANONICAL_CLASSES, isValidCanonicalClass } = require('../utils/classNormalizer');
 const { authorizeStudentContext } = require('../middleware/studentContext');
@@ -52,12 +54,18 @@ async function runTests() {
   assert(normalizeClassGrade('10') === '10th', 'Normalizes "10" to "10th"');
   assert(normalizeClassGrade('Class 10th') === '10th', 'Normalizes "Class 10th" to "10th"');
 
-  assert(normalizeClassGrade('11') === null, 'Rejects "11" as invalid');
-  assert(normalizeClassGrade('12th') === null, 'Rejects "12th" as invalid');
-  assert(normalizeClassGrade('Kindergarten') === null, 'Rejects "Kindergarten" as invalid');
+  assert(normalizeClassGrade('11') === '11th', 'Normalizes "11" to "11th"');
+  assert(normalizeClassGrade('12th') === '12th', 'Normalizes "12th" to "12th"');
+  assert(normalizeClassGrade('MSC') === 'MSC', 'Normalizes "MSC" to "MSC"');
+  assert(normalizeClassGrade('msc') === 'MSC', 'Normalizes "msc" to "MSC"');
+  assert(normalizeClassGrade('M.Sc') === 'MSC', 'Normalizes "M.Sc" to "MSC"');
+  assert(normalizeClassGrade('BSC') === 'BSC', 'Normalizes "BSC" to "BSC"');
+  assert(normalizeClassGrade('B.Tech') === 'B.Tech', 'Normalizes "B.Tech" to "B.Tech"');
   assert(normalizeClassGrade('') === null, 'Rejects empty class as invalid');
+  assert(normalizeClassGrade('NA') === null, 'Rejects "NA" placeholder as invalid');
   assert(isValidCanonicalClass('6th') === true, 'isValidCanonicalClass accepts "6th"');
-  assert(isValidCanonicalClass('11th') === false, 'isValidCanonicalClass rejects "11th"');
+  assert(isValidCanonicalClass('MSC') === true, 'isValidCanonicalClass accepts "MSC"');
+  assert(isValidCanonicalClass('') === false, 'isValidCanonicalClass rejects empty string');
 
   // -------------------------------------------------------------------------
   // TEST SUITE 2: DATABASE SCHEMA & PARENT-STUDENT MODEL

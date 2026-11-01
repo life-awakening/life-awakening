@@ -188,6 +188,17 @@ export default function StudentsModule({
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [activeStudents])
 
+  const availableClasses = useMemo(() => {
+    const base = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'MSC', 'BSC', 'B.Tech']
+    const set = new Set(base)
+    for (const s of activeStudents) {
+      if (s.class_grade && String(s.class_grade).trim() && s.class_grade !== '—') {
+        set.add(String(s.class_grade).trim())
+      }
+    }
+    return Array.from(set)
+  }, [activeStudents])
+
   // Reset page to 1 whenever any filter changes
   useEffect(() => {
     setPage(1)
@@ -561,11 +572,11 @@ I understand and acknowledge that:
           }}
         >
           <option value="">All Classes</option>
-          <option value="6th">Class 6th</option>
-          <option value="7th">Class 7th</option>
-          <option value="8th">Class 8th</option>
-          <option value="9th">Class 9th</option>
-          <option value="10th">Class 10th</option>
+          {availableClasses.map(c => (
+            <option key={c} value={c}>
+              {c.endsWith('th') || c.endsWith('st') || c.endsWith('nd') || c.endsWith('rd') ? `Class ${c}` : c}
+            </option>
+          ))}
         </select>
 
         {/* School Filter */}
@@ -1190,11 +1201,12 @@ I understand and acknowledge that:
                     {isEditing ? (
                       <select value={editForm.class_grade || ''} onChange={e => setEditForm({ ...editForm, class_grade: e.target.value })} style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12.5px', marginTop: '3px', boxSizing: 'border-box' }}>
                         <option value="">Select Class</option>
-                        <option value="6th">6th</option>
-                        <option value="7th">7th</option>
-                        <option value="8th">8th</option>
-                        <option value="9th">9th</option>
-                        <option value="10th">10th</option>
+                        {availableClasses.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                        {editForm.class_grade && !availableClasses.includes(editForm.class_grade) && (
+                          <option value={editForm.class_grade}>{editForm.class_grade}</option>
+                        )}
                       </select>
                     ) : (
                       <div style={{ fontWeight: '700', color: '#334155', marginTop: '3px' }}>{selectedStudentProfile.class_grade || '—'}</div>

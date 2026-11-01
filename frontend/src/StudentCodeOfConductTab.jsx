@@ -201,26 +201,8 @@ const SAFETY_PROTOCOLS = [
   }
 ];
 
-const EMERGENCY_DIRECTORY = [
-  {
-    category: 'Medical Clinic & First Aid',
-    contacts: [
-      { role: 'Campus Doctor', name: 'Dr. Anwar Shaikh Sir', phone: '9823443537', tel: '+919823443537', note: 'On-call medical consultations & clinical triage' },
-      { role: 'Campus Medical Staff', name: 'Nirmala Bhalekar (Sister)', phone: '8208938209', tel: '+918208938209', note: '24/7 First-aid clinic, medication & emergency support' },
-      { role: 'Referral Tertiary Hospital', name: 'Vishwaraj Hospital, Loni Kalbhor', phone: '020-67521000', tel: '+912067521000', note: 'Designated hospital facility for emergencies' }
-    ]
-  },
-  {
-    category: 'Campus Administration & Safety',
-    contacts: [
-      { role: 'Campus Security & Admin', name: 'Mr. Harshavardhan Patil', phone: '77220 17372', tel: '+917722017372', note: 'Perimeter security, gates, and campus operations' },
-      { role: 'Associate Director / Lead', name: 'Mr. Shardool Shirolkar', phone: '9879616220', tel: '+919879616220', note: 'Overall program lead & escalations' }
-    ]
-  }
-];
-
 export default function StudentCodeOfConductTab({ myData = {} }) {
-  const [activeSection, setActiveSection] = useState('all'); // 'all', 'conduct', 'safety', 'contacts'
+  const [activeSection, setActiveSection] = useState('all'); // 'all', 'conduct', 'safety'
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredConduct = useMemo(() => {
@@ -243,23 +225,8 @@ export default function StudentCodeOfConductTab({ myData = {} }) {
     );
   }, [searchQuery]);
 
-  const filteredDirectory = useMemo(() => {
-    if (!searchQuery.trim()) return EMERGENCY_DIRECTORY;
-    const q = searchQuery.toLowerCase();
-    return EMERGENCY_DIRECTORY.map(group => ({
-      ...group,
-      contacts: group.contacts.filter(c => 
-        c.role.toLowerCase().includes(q) ||
-        c.name.toLowerCase().includes(q) ||
-        c.phone.toLowerCase().includes(q) ||
-        (c.note && c.note.toLowerCase().includes(q))
-      )
-    })).filter(group => group.contacts.length > 0);
-  }, [searchQuery]);
-
   const showConduct = activeSection === 'all' || activeSection === 'conduct';
   const showSafety = activeSection === 'all' || activeSection === 'safety';
-  const showContacts = activeSection === 'all' || activeSection === 'contacts';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1120px', margin: '0 auto', width: '100%', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -267,7 +234,7 @@ export default function StudentCodeOfConductTab({ myData = {} }) {
       {/* ── Page Header ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.4px' }}>
-          Student Code of Conduct &amp; Safety Protocols
+          Code of Conduct
         </h1>
         <p style={{ margin: 0, fontSize: '13.5px', color: '#64748b', lineHeight: 1.5 }}>
           Official code of conduct, residential accommodations, and safety guidelines for the Life Awakening Program.
@@ -399,8 +366,7 @@ export default function StudentCodeOfConductTab({ myData = {} }) {
           {[
             { id: 'all', label: 'All Guidelines' },
             { id: 'conduct', label: '10 Code Rules' },
-            { id: 'safety', label: 'Safety & Welfare Protocols' },
-            { id: 'contacts', label: 'Emergency Contacts' }
+            { id: 'safety', label: 'Safety & Welfare Protocols' }
           ].map(tab => {
             const isSel = activeSection === tab.id;
             return (
@@ -614,71 +580,6 @@ export default function StudentCodeOfConductTab({ myData = {} }) {
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Section 3: Emergency Contacts Directory ── */}
-      {showContacts && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: (showConduct || showSafety) ? '12px' : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
-              Emergency Contacts Directory
-            </h2>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
-              Click phone numbers to dial directly
-            </span>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '14px'
-          }}>
-            {filteredDirectory.map((group, gIdx) => (
-              <div
-                key={gIdx}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}
-              >
-                <div style={{ fontSize: '14.5px', fontWeight: '750', color: '#0f172a', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9' }}>
-                  {group.category}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {group.contacts.map((c, cIdx) => (
-                    <div key={cIdx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{c.name}</span>
-                        <a
-                          href={`tel:${c.tel || c.phone.replace(/\s+/g, '')}`}
-                          style={{
-                            fontSize: '12.5px',
-                            fontWeight: '700',
-                            color: '#ea580c',
-                            textDecoration: 'none',
-                            fontFamily: 'monospace'
-                          }}
-                        >
-                          {c.phone}
-                        </a>
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>{c.role}</div>
-                      {c.note && (
-                        <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>{c.note}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

@@ -560,14 +560,17 @@ const processLifeAwakeningStudentUploadJob = async (
       continue;
     }
 
-    // 2. Class / Standard canonical validation
+    // 2. Class / Standard canonical validation (Flexible: accepts school grades 1st-12th, college degrees like MSC, BSC, B.Tech, etc.)
     const rawClass = r.class_grade || r._raw_class_grade;
-    const canonicalClass = normalizeClassGrade(rawClass);
+    let canonicalClass = normalizeClassGrade(rawClass);
+    if (!canonicalClass && targetBatch && targetBatch.class_grade) {
+      canonicalClass = normalizeClassGrade(targetBatch.class_grade) || targetBatch.class_grade;
+    }
     if (!canonicalClass) {
       failed++;
       errorsList.push({
         row: studentName || `Row ${rowNum}`,
-        error: `Invalid or unsupported Class / Standard: "${rawClass || 'empty'}". Allowed canonical classes: 6th, 7th, 8th, 9th, 10th.`
+        error: `Missing or invalid Class / Standard: "${rawClass || 'empty'}". Please provide a valid class/grade (e.g. 6th, 7th, 8th, 9th, 10th, 11th, 12th, MSC, etc.).`
       });
       continue;
     }
@@ -2263,7 +2266,7 @@ const sendOrientationEmail = async (req, res) => {
 
     if (roles.includes('student')) {
       queries.push(`
-        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'student' as sub_role, bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'student' as sub_role, bs.squad, bs.room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
@@ -2273,7 +2276,7 @@ const sendOrientationEmail = async (req, res) => {
 
     if (roles.includes('faculty')) {
       queries.push(`
-        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'faculty' as sub_role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'faculty' as sub_role, bf.squad, NULL as room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_faculty bf
         JOIN users u ON bf.faculty_id = u.id
         JOIN batches b ON bf.batch_id = b.id
@@ -2283,7 +2286,7 @@ const sendOrientationEmail = async (req, res) => {
 
     if (roles.includes('ltc_member')) {
       queries.push(`
-        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'ltc_member' as sub_role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.name as student_name, u.email, u.role, 'ltc_member' as sub_role, bf.squad, NULL as room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_faculty bf
         JOIN users u ON bf.faculty_id = u.id
         JOIN batches b ON bf.batch_id = b.id
@@ -2320,7 +2323,7 @@ const sendOrientationEmail = async (req, res) => {
                ) as email,
                'parent' as role,
                'parent_1' as sub_role,
-               bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+               bs.squad, bs.room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
@@ -2357,7 +2360,7 @@ const sendOrientationEmail = async (req, res) => {
                ) as email,
                'parent' as role,
                'parent_2' as sub_role,
-               bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+               bs.squad, bs.room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
@@ -2417,6 +2420,7 @@ const sendOrientationEmail = async (req, res) => {
       // Function to replace placeholders
       const replaceVars = (str) => {
         const squadDisplay = (u.squad && u.squad !== 'LTC Admin') ? u.squad : 'Surya';
+        const roomDisplay = (u.room && String(u.room).trim()) ? String(u.room).trim() : 'TBD';
         const deadlineVal = req.body.deadline || (req.body.extraFieldValues && req.body.extraFieldValues.deadline) || '';
         let resStr = str
           .replace(/Dear Parent\/Guardian of {{name}},/g, `Dear Parent/Guardian of ${studentName},`)
@@ -2426,6 +2430,7 @@ const sendOrientationEmail = async (req, res) => {
           .replace(/{{role}}/g, roleName)
           .replace(/{{batch_name}}/g, u.batch_name || '')
           .replace(/{{squad}}/g, squadDisplay)
+          .replace(/{{room}}/g, roomDisplay)
           .replace(/{{email}}/g, u.email || '')
           .replace(/{{password}}/g, defaultPassword)
           .replace(/{{start_date}}/g, startDateStr)
@@ -2570,11 +2575,13 @@ const sendOrientationEmail = async (req, res) => {
 
         const replaceVars = (str) => {
           const deadlineVal = req.body.deadline || (req.body.extraFieldValues && req.body.extraFieldValues.deadline) || '';
+          const roomDisplay = (user && user.room && String(user.room).trim()) ? String(user.room).trim() : 'TBD';
           let resStr = str
             .replace(/{{name}}/g, recipientName)
             .replace(/{{role}}/g, recipientRole)
             .replace(/{{batch_name}}/g, batchName)
             .replace(/{{squad}}/g, squadDisplay)
+            .replace(/{{room}}/g, roomDisplay)
             .replace(/{{email}}/g, targetEmail)
             .replace(/{{password}}/g, defaultPassword)
             .replace(/{{start_date}}/g, batchStartDateStr)
@@ -2763,6 +2770,7 @@ const sendManualEmail = async (req, res) => {
     const buildManualEmailContent = async (targetEmail) => {
       const userRes = await pool.query(
         `SELECT u.name, u.email, u.role, u.squad, u.prn, u.division, 
+                (SELECT bs.room FROM batch_students bs WHERE bs.student_id = u.id ORDER BY bs.id DESC LIMIT 1) as room,
                 (SELECT b.name FROM batch_students bs JOIN batches b ON bs.batch_id = b.id WHERE bs.student_id = u.id ORDER BY b.id DESC LIMIT 1) as batch_name,
                 (SELECT b.start_date::text FROM batch_students bs JOIN batches b ON bs.batch_id = b.id WHERE bs.student_id = u.id ORDER BY b.id DESC LIMIT 1) as start_date,
                 (SELECT b.end_date::text FROM batch_students bs JOIN batches b ON bs.batch_id = b.id WHERE bs.student_id = u.id ORDER BY b.id DESC LIMIT 1) as end_date
@@ -2774,6 +2782,7 @@ const sendManualEmail = async (req, res) => {
       const recipientName = user ? user.name : targetEmail.split('@')[0];
       const recipientRole = user ? (user.role === 'student' ? 'Student' : (user.role === 'ltc_member' ? 'LTC Member' : (user.role === 'parent' ? 'Parent' : 'Faculty'))) : (req.body.role === 'faculty' ? 'Faculty' : 'Student');
       const squadName = (user && user.squad && user.squad !== 'LTC Admin') ? user.squad : 'Surya';
+      const roomName = (user && user.room && String(user.room).trim()) ? String(user.room).trim() : 'A-101';
       const batchName = (user && user.batch_name) ? user.batch_name : 'Batch 1';
       const startDateStr = (user && user.start_date && !isNaN(new Date(user.start_date).getTime())) ? new Date(user.start_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '01 Aug 2026';
       const endDateStr = (user && user.end_date && !isNaN(new Date(user.end_date).getTime())) ? new Date(user.end_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '15 Aug 2026';
@@ -2789,6 +2798,7 @@ const sendManualEmail = async (req, res) => {
           .replace(/{{role}}/g, recipientRole)
           .replace(/{{batch_name}}/g, batchName)
           .replace(/{{squad}}/g, squadName)
+          .replace(/{{room}}/g, roomName)
           .replace(/{{email}}/g, targetEmail)
           .replace(/{{password}}/g, defaultPassword)
           .replace(/{{start_date}}/g, startDateStr)
@@ -2937,7 +2947,7 @@ const getOrientationRecipients = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(`
-      SELECT u.id, u.name, u.email, u.phone, u.parent_mobile, u.prn, u.panel, u.division, u.parent_email, u.role, bs.squad, b.name as batch_name,
+      SELECT u.id, u.name, u.email, u.phone, u.parent_mobile, u.prn, u.panel, u.division, u.parent_email, u.role, bs.squad, bs.room, b.name as batch_name,
              COALESCE(
                (
                  SELECT pu.email FROM parent_students ps2 
@@ -2973,14 +2983,14 @@ const getOrientationRecipients = async (req, res) => {
       JOIN batches b ON bs.batch_id = b.id
       WHERE bs.batch_id = $1
       UNION ALL
-      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, b.name as batch_name,
+      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, NULL as room, b.name as batch_name,
              NULL as parent_1_email, NULL as parent_1_name, NULL as parent_2_email, NULL as parent_2_name
       FROM batch_faculty bf
       JOIN users u ON bf.faculty_id = u.id
       JOIN batches b ON bf.batch_id = b.id
       WHERE bf.batch_id = $1 AND (u.role IS NULL OR u.role != 'ltc_member')
       UNION ALL
-      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, b.name as batch_name,
+      SELECT u.id, u.name, u.email, u.phone, NULL as parent_mobile, u.prn, u.panel, u.division, NULL as parent_email, u.role, bf.squad, NULL as room, b.name as batch_name,
              NULL as parent_1_email, NULL as parent_1_name, NULL as parent_2_email, NULL as parent_2_name
       FROM batch_faculty bf
       JOIN users u ON bf.faculty_id = u.id
@@ -3062,7 +3072,7 @@ const createBatch = async (req, res) => {
   if (class_grade) {
     canonicalBatchClass = normalizeClassGrade(class_grade);
     if (!canonicalBatchClass) {
-      return res.status(400).json({ message: `Invalid class_grade: "${class_grade}". Allowed canonical classes: 6th, 7th, 8th, 9th, 10th.` });
+      return res.status(400).json({ message: `Invalid class_grade: "${class_grade}". Please provide a valid class or degree (e.g. 6th, 7th, 8th, 9th, 10th, 11th, 12th, MSC, etc.).` });
     }
   }
 
@@ -3308,7 +3318,7 @@ const updateBatch = async (req, res) => {
       } else {
         canonicalBatchClass = normalizeClassGrade(class_grade);
         if (!canonicalBatchClass) {
-          return res.status(400).json({ message: `Invalid class_grade: "${class_grade}". Allowed canonical classes: 6th, 7th, 8th, 9th, 10th.` });
+          return res.status(400).json({ message: `Invalid class_grade: "${class_grade}". Please provide a valid class or degree (e.g. 6th, 7th, 8th, 9th, 10th, 11th, 12th, MSC, etc.).` });
         }
       }
     }
@@ -6430,6 +6440,15 @@ const validateBulkUpload = async (req, res) => {
       let validCount = 0;
       let invalidCount = 0;
 
+      const rawBatchId = req.body?.batchId || req.query?.batchId || null;
+      let targetBatch = null;
+      if (rawBatchId) {
+        try {
+          const bRes = await pool.query("SELECT id, name, capacity, class_grade FROM batches WHERE id = $1 AND is_deleted IS NOT TRUE", [rawBatchId]);
+          if (bRes.rowCount > 0) targetBatch = bRes.rows[0];
+        } catch (_) {}
+      }
+
       const studentKeys = [];
       for (let i = 0; i < parsedData.length; i++) {
         const raw = parsedData[i];
@@ -6451,14 +6470,17 @@ const validateBulkUpload = async (req, res) => {
 
         const studentName = (nameVal || '').trim();
         const rawClass = normalized.class_grade || normalized._raw_class_grade;
-        const canonicalClass = normalizeClassGrade(rawClass);
+        let canonicalClass = normalizeClassGrade(rawClass);
+        if (!canonicalClass && targetBatch && targetBatch.class_grade) {
+          canonicalClass = normalizeClassGrade(targetBatch.class_grade) || targetBatch.class_grade;
+        }
 
         const p1 = (normalized.parent_email_1 || (normalized.parent_email && !normalized.parent_email_2 ? normalized.parent_email : '') || normalized.email || '').toLowerCase().trim();
         const p2 = (normalized.parent_email_2 || (normalized.parent_email && normalized.parent_email !== p1 ? normalized.parent_email : '') || '').toLowerCase().trim();
 
         const rowErrors = [];
         if (!studentName) rowErrors.push('Missing Student Name');
-        if (!canonicalClass) rowErrors.push(`Invalid Class / Standard: "${rawClass || 'empty'}"`);
+        if (!canonicalClass) rowErrors.push(`Missing or invalid Class / Standard: "${rawClass || 'empty'}"`);
         if (!p1 && !p2) rowErrors.push('Missing parent email (Email Address1 or 2 required)');
 
         if (rowErrors.length > 0) {
@@ -8725,7 +8747,7 @@ const sendOrientationWhatsapp = async (req, res) => {
 
     if (targetRoles.includes('student')) {
       queries.push(`
-        SELECT u.id, u.name, u.phone, u.role, bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.phone, u.role, bs.squad, bs.room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
@@ -8735,7 +8757,7 @@ const sendOrientationWhatsapp = async (req, res) => {
 
     if (targetRoles.includes('faculty')) {
       queries.push(`
-        SELECT u.id, u.name, u.phone, u.role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.phone, u.role, bf.squad, NULL as room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_faculty bf
         JOIN users u ON bf.faculty_id = u.id
         JOIN batches b ON bf.batch_id = b.id
@@ -8745,7 +8767,7 @@ const sendOrientationWhatsapp = async (req, res) => {
 
     if (targetRoles.includes('ltc_member')) {
       queries.push(`
-        SELECT u.id, u.name, u.phone, u.role, bf.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, u.name, u.phone, u.role, bf.squad, NULL as room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_faculty bf
         JOIN users u ON bf.faculty_id = u.id
         JOIN batches b ON bf.batch_id = b.id
@@ -8759,7 +8781,7 @@ const sendOrientationWhatsapp = async (req, res) => {
 
     if (targetRoles.includes('parent')) {
       queries.push(`
-        SELECT u.id, CONCAT('Parent of ', u.name) as name, u.parent_mobile as phone, 'parent' as role, bs.squad, b.name as batch_name, b.start_date::text, b.end_date::text
+        SELECT u.id, CONCAT('Parent of ', u.name) as name, u.parent_mobile as phone, 'parent' as role, bs.squad, bs.room, b.name as batch_name, b.start_date::text, b.end_date::text
         FROM batch_students bs
         JOIN users u ON bs.student_id = u.id
         JOIN batches b ON bs.batch_id = b.id
@@ -8807,12 +8829,14 @@ const sendOrientationWhatsapp = async (req, res) => {
       // Function to replace placeholders
       const replaceVars = (str) => {
         const squadDisplay = (u.squad && u.squad !== 'LTC Admin') ? u.squad : 'Surya';
+        const roomDisplay = (u.room && String(u.room).trim()) ? String(u.room).trim() : 'TBD';
         const deadlineVal = req.body.deadline || (req.body.extraFieldValues && req.body.extraFieldValues.deadline) || '';
         let resStr = str
           .replace(/{{name}}/g, u.name || '')
           .replace(/{{role}}/g, roleName)
           .replace(/{{batch_name}}/g, u.batch_name || '')
           .replace(/{{squad}}/g, squadDisplay)
+          .replace(/{{room}}/g, roomDisplay)
           .replace(/{{phone}}/g, u.phone || '')
           .replace(/{{password}}/g, defaultPassword)
           .replace(/{{start_date}}/g, startDateStr)

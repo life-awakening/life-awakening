@@ -5137,10 +5137,10 @@ MIT World Peace University, Pune`,
   // Real-time live preview content calculator for Manual Email Sender
   const manualPreviewContent = useMemo(() => {
     const sampleUserByRole = {
-      student: { name: 'Rahul Sharma', role: 'student', email: (parsedManualEmails.valid[0] || 'student@example.com'), squad: 'Surya' },
-      faculty: { name: 'Dr. Anita Roy', role: 'faculty', email: (parsedManualEmails.valid[0] || 'faculty@example.com'), squad: 'Surya' },
-      parent: { name: 'Parent of Rahul Sharma', role: 'parent', email: (parsedManualEmails.valid[0] || 'parent@example.com'), squad: 'Surya' },
-      ltc_member: { name: 'Vikram Singh', role: 'ltc_member', email: (parsedManualEmails.valid[0] || 'ltc@example.com'), squad: 'Surya' }
+      student: { name: 'Rahul Sharma', role: 'student', email: (parsedManualEmails.valid[0] || 'student@example.com'), squad: 'Surya', room: 'Sinhagad A-101' },
+      faculty: { name: 'Dr. Anita Roy', role: 'faculty', email: (parsedManualEmails.valid[0] || 'faculty@example.com'), squad: 'Surya', room: 'Faculty Guest House 204' },
+      parent: { name: 'Parent of Rahul Sharma', role: 'parent', email: (parsedManualEmails.valid[0] || 'parent@example.com'), squad: 'Surya', room: 'Sinhagad A-101' },
+      ltc_member: { name: 'Vikram Singh', role: 'ltc_member', email: (parsedManualEmails.valid[0] || 'ltc@example.com'), squad: 'Surya', room: 'Staff Qtrs 12' }
     };
 
     const userObj = sampleUserByRole[manualPreviewRole] || sampleUserByRole.student;
@@ -5159,6 +5159,7 @@ MIT World Peace University, Pune`,
       .replace(/{{name}}/g, userObj.name || '')
       .replace(/{{role}}/g, roleName)
       .replace(/{{batch_name}}/g, targetBatchObj.name || 'Batch 1')
+      .replace(/{{room}}/g, userObj.room || 'TBD')
       .replace(/{{deadline}}/g, deadlineVal);
 
     let parsedBody = rawBody
@@ -5166,6 +5167,7 @@ MIT World Peace University, Pune`,
       .replace(/{{role}}/g, roleName)
       .replace(/{{batch_name}}/g, targetBatchObj.name || 'Batch 1')
       .replace(/{{squad}}/g, userObj.squad || 'Surya')
+      .replace(/{{room}}/g, userObj.room || 'TBD')
       .replace(/{{email}}/g, userObj.email)
       .replace(/{{password}}/g, defaultPassword)
       .replace(/{{start_date}}/g, startDateStr)
@@ -5235,7 +5237,7 @@ MIT World Peace University, Pune`,
           name: templateName,
           subject: orientationSubject,
           body: orientationBody,
-          variables: ['{{name}}', '{{role}}', '{{batch_name}}', '{{squad}}', '{{email}}', '{{start_date}}', '{{end_date}}', '{{login_url}}']
+          variables: ['{{name}}', '{{role}}', '{{batch_name}}', '{{squad}}', '{{room}}', '{{email}}', '{{start_date}}', '{{end_date}}', '{{login_url}}']
         })
       });
       const data = await res.json();
@@ -5810,12 +5812,12 @@ MIT World Peace University, Pune`,
 
   const renderOrientationView = () => {
     const sampleUserByRole = {
-      student: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'student', email: 'rahul.sharma@mitwpu.edu.in', squad: 'Surya' },
-      faculty: { name: 'Dr. Anita Roy', student_name: 'Rahul Sharma', role: 'faculty', email: 'anita.roy@mitwpu.edu.in', squad: 'Surya' },
-      parent: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent.rahul@gmail.com', squad: 'Surya' },
-      parent_1: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent1.rahul@gmail.com', squad: 'Surya' },
-      parent_2: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent2.rahul@gmail.com', squad: 'Surya' },
-      ltc_member: { name: 'Vikram Singh', student_name: 'Rahul Sharma', role: 'ltc_member', email: 'vikram.singh@mitwpu.edu.in', squad: 'Surya' }
+      student: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'student', email: 'rahul.sharma@mitwpu.edu.in', squad: 'Surya', room: 'Sinhagad A-101' },
+      faculty: { name: 'Dr. Anita Roy', student_name: 'Rahul Sharma', role: 'faculty', email: 'anita.roy@mitwpu.edu.in', squad: 'Surya', room: 'Faculty Guest House 204' },
+      parent: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent.rahul@gmail.com', squad: 'Surya', room: 'Sinhagad A-101' },
+      parent_1: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent1.rahul@gmail.com', squad: 'Surya', room: 'Sinhagad A-101' },
+      parent_2: { name: 'Rahul Sharma', student_name: 'Rahul Sharma', role: 'parent', email: 'parent2.rahul@gmail.com', squad: 'Surya', room: 'Sinhagad A-101' },
+      ltc_member: { name: 'Vikram Singh', student_name: 'Rahul Sharma', role: 'ltc_member', email: 'vikram.singh@mitwpu.edu.in', squad: 'Surya', room: 'Staff Qtrs 12' }
     };
 
     const isParentPreviewRole = previewRecipientRole === 'parent' || previewRecipientRole === 'parent_1' || previewRecipientRole === 'parent_2';
@@ -5838,7 +5840,8 @@ MIT World Peace University, Pune`,
       student_name: 'Rahul Sharma',
       role: 'faculty',
       email: firstFacultyEmail || 'faculty.member@mitwpu.edu.in',
-      squad: 'Surya'
+      squad: 'Surya',
+      room: 'Faculty Guest House 204'
     } : (matchedRecipient ? (
       isParentPreviewRole ? {
         name: matchedRecipient.name,
@@ -5847,11 +5850,13 @@ MIT World Peace University, Pune`,
         email: previewRecipientRole === 'parent_2' 
           ? (matchedRecipient.parent_2_email || 'parent2.rahul@gmail.com') 
           : (matchedRecipient.parent_1_email || matchedRecipient.parent_email || 'parent1.rahul@gmail.com'),
-        squad: (matchedRecipient.squad && matchedRecipient.squad !== 'LTC Admin') ? matchedRecipient.squad : 'Surya'
+        squad: (matchedRecipient.squad && matchedRecipient.squad !== 'LTC Admin') ? matchedRecipient.squad : 'Surya',
+        room: matchedRecipient.room || 'TBD'
       } : {
         ...matchedRecipient,
         student_name: matchedRecipient.name,
-        squad: (matchedRecipient.squad && matchedRecipient.squad !== 'LTC Admin') ? matchedRecipient.squad : 'Surya'
+        squad: (matchedRecipient.squad && matchedRecipient.squad !== 'LTC Admin') ? matchedRecipient.squad : 'Surya',
+        room: matchedRecipient.room || 'TBD'
       }
     ) : (sampleUserByRole[previewRecipientRole] || sampleUserByRole.student));
 
@@ -5877,13 +5882,15 @@ MIT World Peace University, Pune`,
     let parsedSubject = (orientationSubject || '')
       .replace(/{{name}}/g, sampleUser.name || '')
       .replace(/{{role}}/g, roleName)
-      .replace(/{{batch_name}}/g, targetBatchObj.name || 'Batch 1');
+      .replace(/{{batch_name}}/g, targetBatchObj.name || 'Batch 1')
+      .replace(/{{room}}/g, sampleUser.room || 'A-101');
 
     let parsedBody = rawBody
       .replace(/{{name}}/g, sampleUser.name || '')
       .replace(/{{role}}/g, roleName)
       .replace(/{{batch_name}}/g, targetBatchObj.name || 'Batch 1')
       .replace(/{{squad}}/g, sampleUser.squad || 'Surya')
+      .replace(/{{room}}/g, sampleUser.room || 'A-101')
       .replace(/{{email}}/g, sampleUser.email || '')
       .replace(/{{password}}/g, defaultPassword)
       .replace(/{{start_date}}/g, startDateStr)
@@ -6518,6 +6525,7 @@ MIT World Peace University, Pune`,
                       { token: '{{role}}', label: 'Role' },
                       { token: '{{batch_name}}', label: 'Batch' },
                       { token: '{{squad}}', label: 'Squad' },
+                      { token: '{{room}}', label: 'Room' },
                       { token: '{{email}}', label: 'Email' },
                       { token: '{{start_date}}', label: 'Start Date' },
                       { token: '{{end_date}}', label: 'End Date' },
@@ -7788,7 +7796,8 @@ MIT World Peace University, Pune`,
                                       {s.prn && <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '1px' }}>PRN: {s.prn}</div>}
                                     </td>
                                     <td style={{ padding: '10px 12px', fontWeight: '600', color: '#334155' }}>
-                                      {s.panel || '-'} {s.squad ? ` / ${s.squad}` : ''}
+                                      <div>{s.panel || '-'} {s.squad ? ` / ${s.squad}` : ''}</div>
+                                      {s.room && <div style={{ fontSize: '10.5px', color: '#0284c7', fontWeight: '700', marginTop: '2px' }}>Room: {s.room}</div>}
                                     </td>
                                     <td style={{ padding: '10px 12px', color: '#475569' }}>
                                       {mailboxChannel === 'whatsapp' ? (s.phone || <span style={{ color: '#ef4444', fontWeight: '600' }}>Missing</span>) : s.email}

@@ -2552,7 +2552,6 @@ export default function StudentDashboard() {
             </div>
             <div style={{ overflow: 'hidden', maxWidth: isCollapsed ? '0px' : '180px', opacity: isCollapsed ? 0 : 1, visibility: isCollapsed ? 'hidden' : 'visible', transition: 'max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, visibility 0.35s', whiteSpace: 'nowrap' }}>
               <p style={{ fontWeight: '600', fontSize: '12px', color: '#0f172a', lineHeight: '1.2', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{studentDisplayName}</p>
-              <p style={{ fontSize: '10px', color: '#64748b', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{t("Student")}</p>
             </div>
           </div>
           
@@ -2657,14 +2656,12 @@ export default function StudentDashboard() {
         className="h-12 flex items-center justify-between px-8 sticky top-0 z-10 flex-shrink-0"
         style={{ backgroundColor: '#ea580c', borderBottom: '1px solid rgba(255,255,255,0.1)' }}
       >
-        {/* Breadcrumbs / Page Title */}
+        {/* Page Title */}
         <div 
           className="flex items-center"
           style={{ fontFamily: '"Poppins", sans-serif', fontSize: '18px', fontWeight: 600, lineHeight: 1.2, color: '#ffffff' }}
         >
-          <span>{t("Student Portal")}</span>
-          <span className="mx-2" style={{ color: 'rgba(216,217,229,0.4)' }}>/</span>
-          <span style={{ fontWeight: 400 }}>
+          <span>
             {activeTab === 'dashboard' && t('My Overview')}
             {activeTab === 'schedules' && t('Activity Schedule')}
             {activeTab === 'timetable' && t('LAP Timetable')}
@@ -2677,6 +2674,8 @@ export default function StudentDashboard() {
             {activeTab === 'journey' && t('LAP Journey')}
             {activeTab === 'certificates' && t('My Certificates')}
             {activeTab === 'emergency-contacts' && t('Emergency Contacts')}
+            {activeTab === 'code-of-conduct' && t('Code of Conduct')}
+            {activeTab === 'things-to-carry' && t('Things to Carry')}
           </span>
         </div>
 
@@ -2906,7 +2905,6 @@ export default function StudentDashboard() {
               </div>
               <div>
                 <p style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }} className="font-semibold text-xs text-[#0f172a] leading-tight">{studentDisplayName}</p>
-                <p style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }} className="text-[10px] text-slate-500">{t("Student")}</p>
               </div>
             </div>
             <button
@@ -3624,7 +3622,7 @@ export default function StudentDashboard() {
                 letterSpacing: '-0.02em',
                 lineHeight: '1.25'
               }}>
-                Life Awakening Program - School Education
+                Life Awakening Program
               </h2>
               <p style={{ 
                 fontSize: '13px', 
@@ -4201,7 +4199,7 @@ export default function StudentDashboard() {
                         color: '#334155', 
                         lineHeight: '1.6' 
                       }}>
-                        <li><strong>Voluntary Participation:</strong> I give consent for my child to participate in the Life Awakening Program (School Education) including travel, outdoor, sports, agricultural/nature-based, and experiential learning activities.</li>
+                        <li><strong>Voluntary Participation:</strong> I give consent for my child to participate in the Life Awakening Program including travel, outdoor, sports, agricultural/nature-based, and experiential learning activities.</li>
                         <li><strong>Rules &amp; Discipline:</strong> I understand that my child is expected to abide by all program rules, discipline, schedules, and safety instructions given by organizers and school coordinators.</li>
                         <li><strong>Medical Disclosure:</strong> I have truthfully disclosed all known medical conditions, allergies, and special requirements of my child above.</li>
                         <li><strong>Emergency Medical Care:</strong> In the event of a medical emergency or illness, I authorize program organizers/instructors to administer first aid and, if necessary, arrange professional medical treatment or hospitalization at my expense.</li>
@@ -5483,7 +5481,7 @@ export default function StudentDashboard() {
                     activeTab === 'profile' ? 'My Profile' :
                     activeTab === 'undertaking' ? 'Undertaking Form' :
                     activeTab === 'things-to-carry' ? 'Things to Carry' :
-                    activeTab === 'code-of-conduct' ? 'Student Code of Conduct' :
+                    activeTab === 'code-of-conduct' ? 'Code of Conduct' :
                     activeTab === 'service-feedback' ? 'Service & Trainee Feedback' :
                     activeTab === 'journey' ? 'LAP Journey' :
                     activeTab === 'tickets' ? 'Raise Ticket' :

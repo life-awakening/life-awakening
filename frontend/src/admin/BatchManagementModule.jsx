@@ -451,6 +451,14 @@ function BatchFormModal({ open, onClose, onSave, initial, token, batchesCount, d
               <option value="8th">8th</option>
               <option value="9th">9th</option>
               <option value="10th">10th</option>
+              <option value="11th">11th</option>
+              <option value="12th">12th</option>
+              <option value="MSC">MSC</option>
+              <option value="BSC">BSC</option>
+              <option value="B.Tech">B.Tech</option>
+              {form.class_grade && !['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'MSC', 'BSC', 'B.Tech'].includes(form.class_grade) && (
+                <option value={form.class_grade}>{form.class_grade}</option>
+              )}
             </select>
           </div>
           <div>
@@ -1082,6 +1090,14 @@ function BatchStudentsTab({ batchId, batchName, token, toast, onRefresh }) {
           <option value="8th">Class 8th</option>
           <option value="9th">Class 9th</option>
           <option value="10th">Class 10th</option>
+          <option value="11th">Class 11th</option>
+          <option value="12th">Class 12th</option>
+          <option value="MSC">MSC</option>
+          <option value="BSC">BSC</option>
+          <option value="B.Tech">B.Tech</option>
+          {selectedClass && !['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'MSC', 'BSC', 'B.Tech'].includes(selectedClass) && (
+            <option value={selectedClass}>{selectedClass}</option>
+          )}
         </select>
 
         {/* School Filter */}
@@ -6732,6 +6748,14 @@ function AssignStudentsModal({ open, onClose, batchId, batchName, token, toast, 
             <option value="8th">Class 8th</option>
             <option value="9th">Class 9th</option>
             <option value="10th">Class 10th</option>
+            <option value="11th">Class 11th</option>
+            <option value="12th">Class 12th</option>
+            <option value="MSC">MSC</option>
+            <option value="BSC">BSC</option>
+            <option value="B.Tech">B.Tech</option>
+            {selectedClass && !['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'MSC', 'BSC', 'B.Tech'].includes(selectedClass) && (
+              <option value={selectedClass}>{selectedClass}</option>
+            )}
           </select>
 
           {/* School Filter */}

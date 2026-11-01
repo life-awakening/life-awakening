@@ -279,6 +279,8 @@ export const translations = {
     // LAP Immersion Schedule Page (Timetable)
     "LAP Schedule": "एलएपी विसर्जन अनुसूची",
     "LRP Schedule": "एलएपी विसर्जन अनुसूची",
+    "Life Awakening Schedule": "लाइफ अवेकनिंग अनुसूची",
+    "Wellness Retreat Programme": "वेलनेस रिट्रीट कार्यक्रम",
     "Interactive agenda, venues, and dress codes": "इंटरएक्टिव एजेंडा, स्थान और ड्रेस कोड",
     "Daywise Timeline": "दिनवार समयरेखा",
     "Dress Codes & Venues": "ड्रेस कोड और स्थान",
@@ -687,6 +689,8 @@ export const translations = {
     // LAP Immersion Schedule Page (Timetable)
     "LAP Schedule": "एलएपी इमर्शन वेळापत्रक",
     "LRP Schedule": "एलएपी इमर्शन वेळापत्रक",
+    "Life Awakening Schedule": "लाईफ अवेकनिंग वेळापत्रक",
+    "Wellness Retreat Programme": "वेलनेस रिट्रीट कार्यक्रम",
     "Interactive agenda, venues, and dress codes": "परस्परसंवादी अजेंडा, ठिकाणे आणि जोडलेल्या ड्रेस कोड",
     "Daywise Timeline": "दिवसनिहाय टाइमलाइन",
     "Dress Codes & Venues": "ड्रेस कोड आणि ठिकाणे",
